@@ -40,3 +40,21 @@ class Membership(Base):
     organisation_id: Mapped[UUID] = mapped_column(ForeignKey("organisations.id"), index=True)
     role: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Invitation(Base):
+    """An offer to join an organisation with a role. Only a hash of the link token is stored."""
+
+    __tablename__ = "invitations"
+    __table_args__ = (CheckConstraint(_one_of("role", ROLES), name="ck_invitations_role"),)
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    organisation_id: Mapped[UUID] = mapped_column(ForeignKey("organisations.id"), index=True)
+    email: Mapped[str] = mapped_column(String(320))
+    role: Mapped[str] = mapped_column(String(30))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    invited_by_user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -13,7 +13,7 @@ from app.modules.audit import service as audit
 from app.modules.auth.deps import CurrentUser, client_ip
 from app.modules.auth.models import User
 from app.modules.organisations import service
-from app.modules.organisations.permissions import ROLE_PERMISSIONS, Permission
+from app.modules.organisations.permissions import ALL_PERMISSIONS, ROLE_PERMISSIONS, Permission
 
 
 @dataclass(frozen=True)
@@ -25,10 +25,14 @@ class TenantContext:
     # None when a platform administrator acts in an organisation they do not belong to.
     role: str | None
 
-    def has(self, permission: Permission) -> bool:
+    @property
+    def permissions(self) -> frozenset[Permission]:
         if self.user.is_platform_admin:
-            return True
-        return self.role is not None and permission in ROLE_PERMISSIONS[self.role]
+            return ALL_PERMISSIONS
+        return ROLE_PERMISSIONS[self.role] if self.role is not None else frozenset()
+
+    def has(self, permission: Permission) -> bool:
+        return permission in self.permissions
 
 
 def _forbidden() -> AppError:
