@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
 from app.core.errors import install_error_handling
 from app.core.logging import configure_logging
+from app.modules.ai import models as _ai_models  # noqa: F401  # routes come in chunk 3
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.health.router import router as health_router
