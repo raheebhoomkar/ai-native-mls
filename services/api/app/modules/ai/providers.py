@@ -47,6 +47,12 @@ class MalformedOutput(ProviderError):
     pass
 
 
+class ProviderRejected(ProviderError):
+    """Bad key, bad request or blocked content: trying again will not help."""
+
+    retryable = False
+
+
 class VisionProvider(Protocol):
     def extract(self, photos: Sequence[Photo]) -> ProviderResult: ...
 

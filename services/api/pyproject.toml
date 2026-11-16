@@ -55,3 +55,6 @@ files = ["app", "tests", "migrations"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Live tests call real providers and cost quota; run them with `pytest -m live`.
+addopts = "-m 'not live'"
+markers = ["live: calls a real external provider (needs credentials in .env)"]

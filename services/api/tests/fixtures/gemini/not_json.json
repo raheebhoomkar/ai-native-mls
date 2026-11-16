@@ -1,0 +1,17 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"photos\": [ {\"media_asset_id\": "
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "modelVersion": "gemini-3.6-flash"
+}

@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     media_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
     # Signs short-lived media download URLs. Required in production.
     media_signing_key: SecretStr | None = Field(default=None, min_length=32)
+    # AI vision provider; see app/modules/ai/providers.py. No key: the labelled demo adapter.
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-3.5-flash"
+    # Gemini takes 15-40 s per call; overloaded models answer 503 only after about 80 s.
+    ai_timeout_seconds: float = Field(default=90, ge=5, le=600)
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def _blank_is_none(cls, value: object) -> object:
+        return value or None
 
     @model_validator(mode="after")
     def _check_media(self) -> Self:

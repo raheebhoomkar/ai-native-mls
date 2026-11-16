@@ -12,6 +12,8 @@ _BASE_URL = make_url(
 _TEST_URL = _BASE_URL.set(database=f"{_BASE_URL.database}_test")
 os.environ["DATABASE_URL"] = _TEST_URL.render_as_string(hide_password=False)
 os.environ.setdefault("ENVIRONMENT", "test")
+# Blank beats the key in .env, so tests never call Gemini; only `pytest -m live` does.
+os.environ["GEMINI_API_KEY"] = ""
 
 from collections.abc import Callable, Iterator  # noqa: E402
 from pathlib import Path  # noqa: E402
