@@ -9,6 +9,7 @@ import {
   useList,
 } from "./api";
 import type { components } from "./api-schema";
+import { ListingMedia } from "./ListingMedia";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
 
 type Status = Listing["status"];
@@ -344,6 +345,8 @@ export function ListingDetail({
           </div>
         </div>
       )}
+
+      <ListingMedia listingId={listing.id} canManage={listing.can_edit} />
 
       {isOwn && <History listingId={listing.id} version={listing.version} />}
     </section>
