@@ -2,7 +2,9 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0 and 1 are complete: foundation, then sign-in, organisations (tenants), role-based permissions and an audit log. Users and memberships can only be created from the command line or directly in the database until Sprint 2 adds invitations and the admin screens. Listings, media and AI features are not built yet. There is no live demo URL yet.
+**Status:** Sprints 0–2 are complete: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations, member and role management, profile, password change and reset, organisation switcher. Module 1 is complete. Listings, media and AI features are not built yet. There is no live demo URL yet.
+
+No email is sent by the system. Invitation and password-reset links are shown once to the administrator, who passes them on.
 
 ## Layout
 
@@ -40,7 +42,25 @@ pnpm install
 pnpm dev
 ```
 
-Create the first platform administrator (the password is prompted for, minimum 12 characters):
+Load local demo data (three organisations and six users; refuses to run when `ENVIRONMENT=production`):
+
+```bash
+cd services/api
+.venv/bin/python -m app.seed
+```
+
+Every seeded user signs in with the password `local-dev-password`. These accounts exist only in your local database.
+
+| Email | Role |
+|---|---|
+| `platform.admin@demo.example.com` | Platform administrator |
+| `mls.admin@demo.example.com` | MLS administrator, Demo MLS |
+| `sunrise.admin@demo.example.com` | Brokerage administrator, Sunrise Realty |
+| `sunrise.agent@demo.example.com` | Agent, Sunrise Realty |
+| `harbour.admin@demo.example.com` | Brokerage administrator, Harbour Homes |
+| `two.orgs@demo.example.com` | Broker at Sunrise Realty, agent at Harbour Homes |
+
+Or create only a platform administrator of your own (the password is prompted for, minimum 12 characters):
 
 ```bash
 cd services/api
@@ -108,4 +128,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md).

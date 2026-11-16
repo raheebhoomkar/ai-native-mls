@@ -6,6 +6,7 @@ from app.core.logging import configure_logging
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.health.router import router as health_router
+from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
 
 API_PREFIX = "/api/v1"
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     v1.include_router(health_router)
     v1.include_router(auth_router)
     v1.include_router(organisations_router)
+    v1.include_router(invitations_router)
     v1.include_router(audit_router)
     app.include_router(v1)
     return app

@@ -30,3 +30,29 @@ class MembershipOut(BaseModel):
 class MeResponse(BaseModel):
     user: UserOut
     memberships: list[MembershipOut]
+
+
+class ProfileUpdate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200, pattern=r"\S")
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+    new_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+
+
+class PasswordResetIssue(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class PasswordResetIssued(BaseModel):
+    """`token` is shown once. Build the link from it and hand it to the user."""
+
+    email: str
+    token: str
+    expires_in_hours: int
+
+
+class PasswordResetComplete(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
