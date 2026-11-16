@@ -60,7 +60,7 @@ A bug found by the live check and fixed with a regression test: the bootstrap co
 - No password reset or change yet (added in Sprint 2).
 - One role per user per organisation.
 - The rate limit can be used to lock a known email out of sign-in for up to 15 minutes. It has no `Retry-After` header.
-- The client IP address is taken from the connection. Behind a reverse proxy this is the proxy's address until trusted forwarded headers are configured (Sprint 5).
+- The client IP address is taken from the connection. Behind a reverse proxy this is the proxy's address unless `FORWARDED_ALLOW_IPS` names the proxy (added in Sprint 5).
 - CSRF protection relies on the `SameSite=Lax` cookie and on there being no cross-origin (CORS) access. Revisit if the web app and API are deployed on different sites (Sprint 5).
 - Expired and revoked session rows are not purged.
 - Sessions have a fixed lifetime; activity does not extend them.

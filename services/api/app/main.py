@@ -1,4 +1,5 @@
 from fastapi import APIRouter, FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.errors import install_error_handling
@@ -38,6 +39,11 @@ def create_app() -> FastAPI:
     v1.include_router(properties_router)
     v1.include_router(listings_router)
     app.include_router(v1)
+
+    if settings.web_dist_dir is not None:
+        # Registered last, so /api routes win. The web app uses hash routing, so
+        # index.html at "/" plus its asset files is everything it needs.
+        app.mount("/", StaticFiles(directory=settings.web_dist_dir, html=True), name="web")
     return app
 
 

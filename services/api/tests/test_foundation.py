@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -9,7 +10,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.db import get_session
 from app.core.errors import AppError
 from app.core.logging import JsonFormatter, request_id_var
@@ -144,3 +145,75 @@ def test_log_lines_are_json_with_request_id() -> None:
     assert entry["message"] == "hello"
     assert entry["request_id"] == "req-123"
     assert entry["status"] == 200
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["postgres://u:p@db.example:5432/mls", "postgresql://u:p@db.example:5432/mls"],
+)
+def test_host_style_database_urls_are_given_the_psycopg_driver(
+    monkeypatch: pytest.MonkeyPatch, url: str
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", url)
+    assert str(Settings(_env_file=None).database_url) == (
+        "postgresql+psycopg://u:p@db.example:5432/mls"
+    )
+
+
+def test_api_serves_the_built_web_app_without_shadowing_the_api(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "index.html").write_text("<!doctype html><title>MLS web</title>")
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "app.js").write_text("console.log('app')")
+    monkeypatch.setenv("WEB_DIST_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    try:
+        client = TestClient(create_app())
+        assert "MLS web" in client.get("/").text
+        assert client.get("/assets/app.js").status_code == 200
+        assert client.get("/api/v1/health").json() == {"status": "ok", "database": "ok"}
+        # Unknown API paths still get the JSON error envelope, not the web page.
+        missing = client.get("/api/v1/nope")
+        assert missing.status_code == 404 and missing.json()["error"]["code"] == "not_found"
+        assert client.get("/../etc/passwd").status_code == 404
+    finally:
+        get_settings.cache_clear()
+
+
+def test_seed_in_production_needs_explicit_settings_and_uses_their_password(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app import seed as seed_module
+
+    def configure(**env: str) -> None:
+        for name in ("SEED_DEMO_DATA", "SEED_PASSWORD"):
+            monkeypatch.delenv(name, raising=False)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        for name, value in env.items():
+            monkeypatch.setenv(name, value)
+        get_settings.cache_clear()
+
+    seeded: list[str] = []
+
+    def fake_seed(session: Session, password: str) -> list[str]:
+        seeded.append(password)
+        return ["user demo"]
+
+    monkeypatch.setattr(seed_module, "seed", fake_seed)
+    try:
+        configure()
+        assert seed_module.main(["--if-configured"]) == 0  # silent no-op at container start
+        assert seed_module.main([]) == 1
+        configure(SEED_DEMO_DATA="true")
+        assert seed_module.main([]) == 1  # no password: never fall back to the published one
+        assert seeded == []
+
+        configure(SEED_DEMO_DATA="true", SEED_PASSWORD="a-generated-secret-value")
+        assert seed_module.main(["--if-configured"]) == 0
+        assert seeded == ["a-generated-secret-value"]
+        output = capsys.readouterr().out
+        assert "a-generated-secret-value" not in output
+        assert seed_module.SEED_PASSWORD not in output
+    finally:
+        get_settings.cache_clear()

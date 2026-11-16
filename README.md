@@ -2,7 +2,9 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–4 are complete: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app. Media and AI features are not built yet. There is no live demo URL yet.
+**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Media and AI features are not built yet.
+
+**Live demo:** not deployed yet. The steps are in [docs/deployment/render.md](docs/deployment/render.md).
 
 No email is sent by the system. Invitation and password-reset links are shown once to the administrator, who passes them on.
 
@@ -14,6 +16,8 @@ No email is sent by the system. Invitation and password-reset links are shown on
 | `apps/web` | React + Vite web app (responsive; PWA planned). |
 | `docs/decisions` | Architecture decision records. |
 | `docs/security` | Role and permission matrix. |
+| `docs/deployment` | How to deploy the demo. |
+| `Dockerfile`, `render.yaml` | The deployable image (API plus web app) and the Render Blueprint. |
 | `docs/modules` | Per-sprint implementation notes and acceptance results. |
 | `docker-compose.yml` | Local Postgres only. |
 
@@ -83,6 +87,9 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 | `ENVIRONMENT` | no | `development` | `development`, `test` or `production` |
 | `LOG_LEVEL` | no | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
 | `SESSION_TTL_HOURS` | no | `12` | How long a sign-in lasts (1–720) |
+| `WEB_DIST_DIR` | no | unset | Directory of the built web app; when set, the API serves it (used in the container) |
+| `SEED_DEMO_DATA`, `SEED_PASSWORD` | no | `false`, unset | Create demo data at container start. In production both are required for seeding, and the demo accounts get `SEED_PASSWORD` (12+ characters) |
+| `FORWARDED_ALLOW_IPS` | no | `127.0.0.1` | Reverse proxies trusted for the client address (container start script) |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | no | `mls`, `mls`, `mls`, `5432` | Used only by `docker-compose.yml` |
 
 ## Checks
@@ -95,6 +102,10 @@ CI (`.github/workflows/ci.yml`) runs the same commands on every pull request and
 
 # Web, from apps/web
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
+
+# Browser end-to-end test, from apps/web. Needs the app running with seed data and Chrome installed.
+# Default target is the dev server; set E2E_BASE_URL and E2E_PASSWORD for another deployment.
+pnpm e2e
 ```
 
 ## API conventions
@@ -138,4 +149,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md), [Sprint 5](docs/modules/s5-early-demo.md).

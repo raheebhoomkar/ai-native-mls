@@ -1,0 +1,36 @@
+# Render Blueprint: one web service (API + web app in one container) and one Postgres.
+# Free plans: the service sleeps when idle and the free database is temporary.
+# This is a demo deployment, not a production one. See docs/deployment/render.md.
+
+databases:
+  - name: mls-db
+    plan: free
+    databaseName: mls
+    user: mls
+
+services:
+  - type: web
+    name: ai-native-mls
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mls-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      # Demo accounts are created at start-up with this generated password.
+      # Read it in the Render dashboard; it is not stored in the repository.
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: SEED_PASSWORD
+        generateValue: true
+      # Requests reach the container only through Render's proxy.
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"

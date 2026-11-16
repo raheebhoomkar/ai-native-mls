@@ -10,5 +10,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Browser end-to-end tests in e2e/ are run by Playwright, not Vitest.
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });
