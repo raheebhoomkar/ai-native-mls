@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web ./
 RUN pnpm build
 
-FROM python:3.13-slim
+FROM python:3.15-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     ENVIRONMENT=production \
