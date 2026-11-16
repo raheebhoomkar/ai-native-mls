@@ -66,3 +66,60 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run build
+
+  # Builds the image that is deployed, runs it with seeded demo data, and drives it in a browser.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mls
+          POSTGRES_PASSWORD: mls
+          POSTGRES_DB: mls
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mls -d mls"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Throwaway value for the CI container only.
+      E2E_PASSWORD: ci-e2e-password-123
+      E2E_BASE_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ai-native-mls .
+      - name: Start the app
+        run: >-
+          docker run -d --name app --network host
+          -e DATABASE_URL=postgres://mls:mls@localhost:5432/mls
+          -e SEED_DEMO_DATA=true
+          -e SEED_PASSWORD="$E2E_PASSWORD"
+          ai-native-mls
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: apps/web
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Wait for the app
+        run: |
+          for attempt in $(seq 1 30); do
+            curl -fsS "$E2E_BASE_URL/api/v1/health" && exit 0
+            sleep 2
+          done
+          docker logs app
+          exit 1
+      - run: pnpm e2e
+        working-directory: apps/web
+      - name: App logs
+        if: failure()
+        run: docker logs app

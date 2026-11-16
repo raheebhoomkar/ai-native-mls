@@ -1,6 +1,12 @@
-"""Local development seed data. Refuses to run in production.
+"""Demo seed data.
 
     python -m app.seed
+
+Locally it uses a fixed, published password. In production it runs only when both
+SEED_DEMO_DATA=true and SEED_PASSWORD are set, and uses that password, so a public
+demo never has accounts with a password that is printed in the README.
+
+`--if-configured` makes it a silent no-op unless SEED_DEMO_DATA=true (used at container start).
 
 Safe to run again: existing users and organisations are left as they are.
 """
@@ -158,7 +164,7 @@ def _seed_listings(session: Session, orgs: dict[str, Organisation]) -> list[str]
     return created
 
 
-def seed(session: Session) -> list[str]:
+def seed(session: Session, password: str = SEED_PASSWORD) -> list[str]:
     created: list[str] = []
     orgs: dict[str, Organisation] = {}
     for name, kind in ORGANISATIONS.items():
@@ -173,7 +179,7 @@ def seed(session: Session) -> list[str]:
                 session,
                 email=email,
                 full_name=full_name,
-                password=SEED_PASSWORD,
+                password=password,
                 is_platform_admin=platform_admin,
             )
             created.append(f"user {email}")
@@ -185,14 +191,27 @@ def seed(session: Session) -> list[str]:
     return created + _seed_listings(session, orgs)
 
 
-def main() -> int:
-    if get_settings().environment == "production":
-        print("Refusing to seed: ENVIRONMENT is production.", file=sys.stderr)
-        return 1
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    settings = get_settings()
+    if "--if-configured" in args and not settings.seed_demo_data:
+        return 0
+    password = SEED_PASSWORD
+    if settings.environment == "production":
+        if not settings.seed_demo_data or settings.seed_password is None:
+            print(
+                "Refusing to seed in production: set SEED_DEMO_DATA=true and SEED_PASSWORD.",
+                file=sys.stderr,
+            )
+            return 1
+        password = settings.seed_password.get_secret_value()
     with Session(get_engine()) as session, session.begin():
-        created = seed(session)
+        created = seed(session, password)
     print("\n".join(f"Created {item}" for item in created) or "Nothing to create.")
-    print(f"Every seeded user signs in with the password: {SEED_PASSWORD}")
+    if password == SEED_PASSWORD:
+        print(f"Every seeded user signs in with the password: {SEED_PASSWORD}")
+    else:
+        print("Seeded users sign in with the password from SEED_PASSWORD.")
     return 0
 
 

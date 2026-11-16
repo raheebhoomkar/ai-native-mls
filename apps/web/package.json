@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "gen:api": "DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://mls:mls@localhost:5432/mls} ../../services/api/.venv/bin/python -c \"import json,sys; sys.path.insert(0,'../../services/api'); from app.main import app; print(json.dumps(app.openapi()))\" > openapi.json && openapi-typescript openapi.json -o src/api-schema.d.ts && rm openapi.json"
+    "gen:api": "DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://mls:mls@localhost:5432/mls} ../../services/api/.venv/bin/python -c \"import json,sys; sys.path.insert(0,'../../services/api'); from app.main import app; print(json.dumps(app.openapi()))\" > openapi.json && openapi-typescript openapi.json -o src/api-schema.d.ts && rm openapi.json",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -21,7 +22,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",

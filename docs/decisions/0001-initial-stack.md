@@ -43,6 +43,7 @@ The project is built by one developer with limited time, in sprints sized to a s
 
 - **Decision:** Render for web, API, worker and managed Postgres, as suggested in INSTRUCTIONS.md Module 15.
 - **Trade-offs:** Free-tier services sleep when idle and free databases expire; acceptable for a demo, not for production. Nothing is deployed yet.
+- **Update 2026-11-17:** the demo runs as one container, not separate services. See ADR 0002.
 
 ## Consequences
 
