@@ -2,7 +2,7 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–3 are complete: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; and the property and listing API (lifecycle, search, sharing between organisations). Listings have no screens yet: use the API docs page until Sprint 4. Media and AI features are not built yet. There is no live demo URL yet.
+**Status:** Sprints 0–4 are complete: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app. Media and AI features are not built yet. There is no live demo URL yet.
 
 No email is sent by the system. Invitation and password-reset links are shown once to the administrator, who passes them on.
 
@@ -42,7 +42,7 @@ pnpm install
 pnpm dev
 ```
 
-Load local demo data (three organisations and six users; refuses to run when `ENVIRONMENT=production`):
+Load local demo data (three organisations, six users and five fictional listings marked `[Demo]`; refuses to run when `ENVIRONMENT=production`):
 
 ```bash
 cd services/api
@@ -90,7 +90,7 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 CI (`.github/workflows/ci.yml`) runs the same commands on every pull request and on pushes to `main`.
 
 ```bash
-# API (needs Postgres running), from services/api
+# API (needs Postgres running; tests use their own database, <name>_test), from services/api
 .venv/bin/ruff format --check . && .venv/bin/ruff check . && .venv/bin/mypy && .venv/bin/pytest
 
 # Web, from apps/web
@@ -120,6 +120,14 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - Editable records carry a `version`. Send the version you read with every change; `409 version_conflict` means someone else changed it first.
 - Collections use cursor pagination: `limit` (1–100, default 20) and `cursor`; responses are `{ "items": [...], "next_cursor": "…" | null }`.
 
+## API types in the web app
+
+After changing the API, regenerate the web app's types:
+
+```bash
+cd apps/web && pnpm gen:api
+```
+
 ## Database migrations
 
 ```bash
@@ -130,4 +138,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md).

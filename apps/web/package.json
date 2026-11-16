@@ -11,7 +11,8 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:api": "DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://mls:mls@localhost:5432/mls} ../../services/api/.venv/bin/python -c \"import json,sys; sys.path.insert(0,'../../services/api'); from app.main import app; print(json.dumps(app.openapi()))\" > openapi.json && openapi-typescript openapi.json -o src/api-schema.d.ts && rm openapi.json"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -28,6 +29,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
     "jsdom": "^31.0.1",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.10.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",

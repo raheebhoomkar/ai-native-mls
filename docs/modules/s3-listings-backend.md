@@ -94,7 +94,7 @@ Bugs found by tests and the live check, fixed:
 
 ## Known limitations
 
-- No screens yet.
+- No screens yet (added in Sprint 4).
 - Two requests that pass the version check at the same instant are separated by the database (`version_id_col`), returning 409 to the loser. That path is implemented but has no automated test, since it needs two concurrent transactions.
 - Listings do not expire by themselves on `expires_on`; someone must set `expired`. A scheduled job can do it once the worker exists (Sprint 6).
 - Editing an active listing does not send it back to review.

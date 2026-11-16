@@ -1,7 +1,16 @@
 import os
 
-# Tests need a reachable Postgres (docker compose locally, a service container in CI).
-os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://mls:mls@localhost:5432/mls")
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+
+# Tests run in their own database, "<configured name>_test", on the same Postgres server
+# (docker compose locally, a service container in CI). The developer's data is never touched
+# and never changes a test result. Set before the app is imported, which reads the setting.
+_BASE_URL = make_url(
+    os.environ.get("DATABASE_URL", "postgresql+psycopg://mls:mls@localhost:5432/mls")
+)
+_TEST_URL = _BASE_URL.set(database=f"{_BASE_URL.database}_test")
+os.environ["DATABASE_URL"] = _TEST_URL.render_as_string(hide_password=False)
 os.environ.setdefault("ENVIRONMENT", "test")
 
 from collections.abc import Callable, Iterator  # noqa: E402
@@ -26,7 +35,16 @@ PASSWORD = "correct horse battery staple"  # test-only credential
 
 @pytest.fixture(scope="session", autouse=True)
 def _migrated_database() -> None:
-    """Apply migrations once, so the suite also proves they run."""
+    """Create the test database if needed and apply migrations, proving they run."""
+    admin = create_engine(_BASE_URL.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    with admin.connect() as connection:
+        exists = connection.scalar(
+            text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": _TEST_URL.database}
+        )
+        if not exists:
+            # The name comes from configuration, not user input; identifiers cannot be bound.
+            connection.execute(text(f'CREATE DATABASE "{_TEST_URL.database}"'))
+    admin.dispose()
     command.upgrade(Config(str(Path(__file__).resolve().parents[1] / "alembic.ini")), "head")
 
 

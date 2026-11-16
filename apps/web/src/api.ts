@@ -58,7 +58,15 @@ export async function api<T>(
 
 export function describeError(error: unknown): string {
   if (!(error instanceof ApiError)) return "Something went wrong.";
-  const fields = error.details.map((d) => d.message).join(" ");
+  // Name the field: "Input should be greater than 0" alone does not say which input.
+  const fields = error.details
+    .map((d) => {
+      const name = d.field.replace(/^(body|query)\./, "").replace(/[._]/g, " ");
+      return /^(current|new) password$|^password$/.test(name)
+        ? d.message
+        : `${name}: ${d.message}`;
+    })
+    .join(" ");
   const text = fields ? `${error.message} ${fields}` : error.message;
   // Validation and permission answers are self-explanatory; other failures get the ID for support.
   return error.requestId && (error.status >= 500 || error.status === 401)
