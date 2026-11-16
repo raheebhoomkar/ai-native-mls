@@ -19,16 +19,40 @@ ALLOWED_ROLES: dict[str, tuple[str, ...]] = {
     "brokerage": ("brokerage_admin", "broker", "agent", "api_consumer"),
 }
 
-Permission = Literal["organisation:read", "member:read", "member:manage", "audit:read"]
+Permission = Literal[
+    "organisation:read",
+    "member:read",
+    "member:manage",
+    "audit:read",
+    "listing:read",
+    # Create listings and properties; edit listings you are the listing agent of.
+    "listing:write",
+    # Edit any listing in the organisation and reassign its agent.
+    "listing:manage_all",
+    # Approve a listing that is pending review so it becomes active.
+    "listing:publish",
+]
 ALL_PERMISSIONS: frozenset[Permission] = frozenset(get_args(Permission))
 
 _ADMIN: frozenset[Permission] = ALL_PERMISSIONS
-_STAFF: frozenset[Permission] = frozenset({"organisation:read", "member:read"})
+_BROKER: frozenset[Permission] = frozenset(
+    {
+        "organisation:read",
+        "member:read",
+        "listing:read",
+        "listing:write",
+        "listing:manage_all",
+        "listing:publish",
+    }
+)
+_AGENT: frozenset[Permission] = frozenset(
+    {"organisation:read", "member:read", "listing:read", "listing:write"}
+)
 
 ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     "mls_admin": _ADMIN,
     "brokerage_admin": _ADMIN,
-    "broker": _STAFF,
-    "agent": _STAFF,
-    "api_consumer": frozenset({"organisation:read"}),
+    "broker": _BROKER,
+    "agent": _AGENT,
+    "api_consumer": frozenset({"organisation:read", "listing:read"}),
 }

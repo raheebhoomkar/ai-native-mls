@@ -10,7 +10,7 @@ Source of truth: `services/api/app/modules/organisations/permissions.py`. Update
 - **Platform administrator** is a flag on the user, not a membership role. It grants every permission in every organisation.
 - Routes ask for a permission with `require("...")`. They never test role names.
 
-## Matrix (Sprint 2)
+## Matrix (Sprint 3)
 
 | Permission | Platform admin | MLS admin | Brokerage admin | Broker | Agent | API consumer |
 |---|---|---|---|---|---|---|
@@ -18,10 +18,14 @@ Source of truth: `services/api/app/modules/organisations/permissions.py`. Update
 | `member:read` — list members (name, email, role) | yes | yes | yes | yes | yes | no |
 | `member:manage` — invite, revoke invitations, change roles, remove members | yes | yes | yes | no | no | no |
 | `audit:read` — view the organisation's audit log | yes | yes | yes | no | no | no |
+| `listing:read` — see own organisation's listings and properties, and listings shared by others | yes | yes | yes | yes | yes | yes |
+| `listing:write` — create properties and listings; edit, transition and archive listings you are the agent of | yes | yes | yes | yes | yes | no |
+| `listing:manage_all` — do the same for any listing in the organisation; assign the listing agent | yes | yes | yes | yes | no | no |
+| `listing:publish` — approve a listing pending review | yes | yes | yes | yes | no | no |
 | Create an organisation (platform-level, not tenant-scoped) | yes | no | no | no | no | no |
 | Issue a password reset link (platform-level) | yes | no | no | no | no | no |
 
-Later sprints add permissions here (listings in Sprint 3).
+Listing visibility between organisations is described in `docs/modules/s3-listings-backend.md`.
 
 ## Role assignment rules
 
@@ -42,7 +46,7 @@ Later sprints add permissions here (listings in Sprint 3).
 
 ## Audited actions
 
-`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`.
+`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`.
 
 Audit events record actor, organisation, target, IP address, request ID and time. They never contain passwords, session tokens or link tokens.
 

@@ -13,6 +13,11 @@ class Base(DeclarativeBase):
     """Every module's models inherit from this so Alembic sees one metadata."""
 
 
+def one_of(column: str, values: tuple[str, ...]) -> str:
+    """SQL for a CHECK constraint limiting a text column to fixed values (trusted input only)."""
+    return f"{column} IN ({', '.join(repr(value) for value in values)})"
+
+
 @lru_cache
 def get_engine() -> Engine:
     return create_engine(str(get_settings().database_url), pool_pre_ping=True)

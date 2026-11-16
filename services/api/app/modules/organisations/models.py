@@ -4,12 +4,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base
+from app.core.db import Base, one_of
 from app.modules.organisations.permissions import ORGANISATION_KINDS, ROLES
-
-
-def _one_of(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IN ({', '.join(repr(value) for value in values)})"
 
 
 class Organisation(Base):
@@ -17,7 +13,7 @@ class Organisation(Base):
 
     __tablename__ = "organisations"
     __table_args__ = (
-        CheckConstraint(_one_of("kind", ORGANISATION_KINDS), name="ck_organisations_kind"),
+        CheckConstraint(one_of("kind", ORGANISATION_KINDS), name="ck_organisations_kind"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -32,7 +28,7 @@ class Membership(Base):
     __tablename__ = "organisation_memberships"
     __table_args__ = (
         UniqueConstraint("user_id", "organisation_id", name="uq_memberships_user_organisation"),
-        CheckConstraint(_one_of("role", ROLES), name="ck_memberships_role"),
+        CheckConstraint(one_of("role", ROLES), name="ck_memberships_role"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -46,7 +42,7 @@ class Invitation(Base):
     """An offer to join an organisation with a role. Only a hash of the link token is stored."""
 
     __tablename__ = "invitations"
-    __table_args__ = (CheckConstraint(_one_of("role", ROLES), name="ck_invitations_role"),)
+    __table_args__ = (CheckConstraint(one_of("role", ROLES), name="ck_invitations_role"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     organisation_id: Mapped[UUID] = mapped_column(ForeignKey("organisations.id"), index=True)

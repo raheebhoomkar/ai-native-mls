@@ -235,7 +235,12 @@ def test_current_organisation_reports_callers_permissions(
 
     as_agent = login_as(agent).get(current).json()
     assert as_agent["my_role"] == "agent"
-    assert as_agent["my_permissions"] == ["member:read", "organisation:read"]
+    assert as_agent["my_permissions"] == [
+        "listing:read",
+        "listing:write",
+        "member:read",
+        "organisation:read",
+    ]
     assert "member:manage" in login_as(admin).get(current).json()["my_permissions"]
     as_root = login_as(root).get(current, headers=_org(org)).json()
     assert as_root["my_role"] is None and "member:manage" in as_root["my_permissions"]
