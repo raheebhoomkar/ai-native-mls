@@ -9,6 +9,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.health.router import router as health_router
 from app.modules.jobs import models as _jobs_models  # noqa: F401  # no routes; registers the table
 from app.modules.listings.router import listings_router, properties_router
+from app.modules.media.router import listing_media_router, media_router
 from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
 
@@ -39,6 +40,8 @@ def create_app() -> FastAPI:
     v1.include_router(audit_router)
     v1.include_router(properties_router)
     v1.include_router(listings_router)
+    v1.include_router(listing_media_router)
+    v1.include_router(media_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

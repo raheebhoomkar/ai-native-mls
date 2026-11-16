@@ -190,6 +190,7 @@ def test_seed_in_production_needs_explicit_settings_and_uses_their_password(
         for name in ("SEED_DEMO_DATA", "SEED_PASSWORD"):
             monkeypatch.delenv(name, raising=False)
         monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("MEDIA_SIGNING_KEY", "k" * 32)  # required in production
         for name, value in env.items():
             monkeypatch.setenv(name, value)
         get_settings.cache_clear()
