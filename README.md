@@ -2,7 +2,7 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Media and AI features are not built yet.
+**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Sprint 6 adds listing photos: upload with validation, thumbnails made by a background job worker, signed download links, removal with a retention period, and local-disk or S3-compatible storage. AI features are not built yet.
 
 **Live demo:** not deployed yet. The steps are in [docs/deployment/render.md](docs/deployment/render.md).
 
@@ -40,13 +40,17 @@ python3 -m venv .venv
 .venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --reload --port 8000
 
+# Background job worker (terminal 3): makes photo thumbnails, deletes removed files
+cd services/api
+.venv/bin/python -m app.worker
+
 # Web (terminal 2)
 cd apps/web
 pnpm install
 pnpm dev
 ```
 
-Load local demo data (three organisations, six users and five fictional listings marked `[Demo]`; refuses to run when `ENVIRONMENT=production`):
+Load local demo data (three organisations, six users, five fictional listings marked `[Demo]` with two drawn demo photos each; refuses to run when `ENVIRONMENT=production`):
 
 ```bash
 cd services/api
@@ -89,6 +93,12 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 | `SESSION_TTL_HOURS` | no | `12` | How long a sign-in lasts (1–720) |
 | `WEB_DIST_DIR` | no | unset | Directory of the built web app; when set, the API serves it (used in the container) |
 | `SEED_DEMO_DATA`, `SEED_PASSWORD` | no | `false`, unset | Create demo data at container start. In production both are required for seeding, and the demo accounts get `SEED_PASSWORD` (12+ characters) |
+| `MEDIA_STORAGE` | no | `local` | `local` (files under `MEDIA_ROOT`, one server only) or `s3` |
+| `MEDIA_ROOT` | no | `<repo>/var/media` | Directory for uploaded files with local storage |
+| `MEDIA_S3_BUCKET`, `MEDIA_S3_ENDPOINT_URL`, `MEDIA_S3_REGION` | with `s3` | unset | Private S3-compatible bucket; the endpoint is needed for services other than AWS. Credentials come from `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` |
+| `MEDIA_MAX_BYTES` | no | `10485760` | Largest upload (10 MB) |
+| `MEDIA_RETENTION_DAYS` | no | `7` | Days before the files of removed media are deleted |
+| `MEDIA_SIGNING_KEY` | in production | per process | Signs media download links (32+ characters). Unset outside production: links stop working when the API restarts |
 | `FORWARDED_ALLOW_IPS` | no | `127.0.0.1` | Reverse proxies trusted for the client address (container start script) |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | no | `mls`, `mls`, `mls`, `5432` | Used only by `docker-compose.yml` |
 
@@ -149,4 +159,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md), [Sprint 5](docs/modules/s5-early-demo.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md), [Sprint 5](docs/modules/s5-early-demo.md), [Sprint 6](docs/modules/s6-media-jobs.md).

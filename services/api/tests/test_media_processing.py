@@ -16,9 +16,9 @@ from app.modules.jobs.models import Job
 from app.modules.media.models import MediaAsset
 from app.modules.media.storage import LocalStorage, S3Storage
 from tests.test_listings import LISTINGS, brokerage, new_listing
-from tests.test_media import Brokerage, storage, upload
+from tests.test_media import Brokerage, upload
 
-__all__ = ["brokerage", "storage"]  # fixtures, imported so pytest finds them here
+__all__ = ["brokerage"]  # fixture, imported so pytest finds it here
 
 
 def image_bytes(fmt: str = "PNG", size: tuple[int, int] = (1200, 800), **save: Any) -> bytes:

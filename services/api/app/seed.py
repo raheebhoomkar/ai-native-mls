@@ -12,13 +12,17 @@ Safe to run again: existing users and organisations are left as they are.
 """
 
 import sys
+from io import BytesIO
+from uuid import UUID
 
+from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import app.main  # noqa: F401  # importing the app registers every module's models on Base
 from app.core.config import get_settings
 from app.core.db import get_engine
+from app.core.errors import AppError
 from app.modules.auth import service as auth
 from app.modules.auth.models import User
 from app.modules.listings import service as listings
@@ -31,6 +35,7 @@ from app.modules.listings.schemas import (
     PropertyCreate,
     TransitionRequest,
 )
+from app.modules.media import service as media
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext
 from app.modules.organisations.models import Organisation
@@ -164,6 +169,71 @@ def _seed_listings(session: Session, orgs: dict[str, Organisation]) -> list[str]
     return created
 
 
+# Muted wall, roof and sky colours; one set per demo photo.
+_PHOTO_COLOURS = (
+    ((214, 196, 160), (140, 70, 50), (150, 190, 220)),
+    ((190, 200, 205), (70, 80, 95), (230, 200, 160)),
+)
+
+
+def _demo_photo(number: int) -> bytes:
+    """A drawn house, clearly labelled as a demo; no real photograph is shipped."""
+    wall, roof, sky = _PHOTO_COLOURS[(number - 1) % len(_PHOTO_COLOURS)]
+    image = Image.new("RGB", (1200, 800), sky)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 680, 1200, 800), fill=(110, 150, 90))
+    draw.rectangle((330, 360, 870, 690), fill=wall)
+    draw.polygon([(280, 380), (600, 150), (920, 380)], fill=roof)
+    draw.rectangle((550, 520, 650, 690), fill=roof)
+    draw.text((40, 30), f"[Demo] photo {number}", fill="white", font=ImageFont.load_default(56))
+    out = BytesIO()
+    image.save(out, "JPEG", quality=85)
+    return out.getvalue()
+
+
+def _stored(session: Session, asset_id: UUID) -> bool:
+    try:
+        media.get_content(session, asset_id)
+    except AppError:
+        return False
+    return True
+
+
+def _seed_photos(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    """Two photos per demo listing. Also replaces photos whose files are gone, as on a fresh
+    container with local storage. The background worker makes their thumbnails."""
+    created: list[str] = []
+    for org_name, (agent_email, _, _) in DEMO_LISTINGS.items():
+        agent_user = auth.get_user_by_email(session, agent_email)
+        if agent_user is None:
+            continue
+        agent = _context(session, agent_user, orgs[org_name])
+        demo = session.scalars(
+            select(Listing).where(
+                Listing.organisation_id == orgs[org_name].id,
+                Listing.title.startswith("[Demo]"),
+                Listing.archived_at.is_(None),
+            )
+        ).all()
+        for listing in demo:
+            _, photos = media.list_media(session, agent, listing.id)
+            if photos and all(_stored(session, photo.id) for photo in photos):
+                continue
+            for photo in photos:
+                media.delete(session, agent, photo.id)
+            for number in (1, 2):
+                media.upload(
+                    session,
+                    agent,
+                    listing.id,
+                    filename=f"demo-photo-{number}.jpg",
+                    declared_type="image/jpeg",
+                    data=_demo_photo(number),
+                )
+            created.append(f"photos for {listing.title}")
+    return created
+
+
 def seed(session: Session, password: str = SEED_PASSWORD) -> list[str]:
     created: list[str] = []
     orgs: dict[str, Organisation] = {}
@@ -188,7 +258,8 @@ def seed(session: Session, password: str = SEED_PASSWORD) -> list[str]:
                 organisations.add_member(
                     session, user_id=user.id, organisation_id=orgs[org_name].id, role=role
                 )
-    return created + _seed_listings(session, orgs)
+    created += _seed_listings(session, orgs)
+    return created + _seed_photos(session, orgs)
 
 
 def main(argv: list[str] | None = None) -> int:

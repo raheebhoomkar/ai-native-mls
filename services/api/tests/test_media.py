@@ -3,7 +3,6 @@
 import hashlib
 import time
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -27,13 +26,6 @@ Brokerage = tuple[Organisation, dict[str, User], dict[str, TestClient]]
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 64
 WEBP = b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 64
-
-
-@pytest.fixture(autouse=True)
-def storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> LocalStorage:
-    local = LocalStorage(tmp_path)
-    monkeypatch.setattr(media_service, "get_storage", lambda: local)
-    return local
 
 
 def upload(
