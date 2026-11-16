@@ -14,6 +14,9 @@ import {
   ROLE_LABELS,
   setActiveOrganisation,
 } from "./api";
+import { ListingDetail } from "./ListingDetail";
+import { EditListing, NewListing } from "./ListingForm";
+import { Listings } from "./Listings";
 import { Members } from "./Members";
 import { SystemStatus } from "./SystemStatus";
 
@@ -129,6 +132,7 @@ export function Workspace({
 
   const organisation = current.state === "ready" ? current.organisation : null;
   const canSeeMembers = organisation?.my_permissions.includes("member:read");
+  const canSeeListings = organisation?.my_permissions.includes("listing:read");
 
   return (
     <>
@@ -137,6 +141,7 @@ export function Workspace({
           <NavLink to="/" end>
             Home
           </NavLink>
+          {canSeeListings && <NavLink to="/listings">Listings</NavLink>}
           {canSeeMembers && <NavLink to="/members">Members</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
           {isPlatformAdmin && <NavLink to="/admin">Platform</NavLink>}
@@ -200,6 +205,39 @@ export function Workspace({
             </>
           }
         />
+        <Route
+          path="/listings"
+          element={
+            organisation && canSeeListings ? (
+              <Listings organisation={organisation} />
+            ) : current.state === "loading" ? (
+              <p>Loading…</p>
+            ) : (
+              <p>You cannot view listings in this organisation.</p>
+            )
+          }
+        />
+        {organisation && canSeeListings && (
+          <>
+            {organisation.my_permissions.includes("listing:write") && (
+              <Route
+                path="/listings/new"
+                element={<NewListing organisation={organisation} />}
+              />
+            )}
+            <Route
+              path="/listings/:id"
+              element={<ListingDetail organisation={organisation} />}
+            />
+            <Route
+              path="/listings/:id/edit"
+              element={<EditListing organisation={organisation} />}
+            />
+          </>
+        )}
+        {current.state === "loading" && (
+          <Route path="/listings/*" element={<p>Loading…</p>} />
+        )}
         <Route
           path="/members"
           element={

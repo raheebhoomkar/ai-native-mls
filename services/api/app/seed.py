@@ -14,7 +14,19 @@ import app.main  # noqa: F401  # importing the app registers every module's mode
 from app.core.config import get_settings
 from app.core.db import get_engine
 from app.modules.auth import service as auth
+from app.modules.auth.models import User
+from app.modules.listings import service as listings
+from app.modules.listings.models import Listing
+from app.modules.listings.schemas import (
+    Address,
+    Area,
+    ListingCreate,
+    Money,
+    PropertyCreate,
+    TransitionRequest,
+)
 from app.modules.organisations import service as organisations
+from app.modules.organisations.deps import TenantContext
 from app.modules.organisations.models import Organisation
 
 # Published in the README on purpose: these accounts exist only on a developer's machine.
@@ -41,6 +53,110 @@ USERS: dict[str, tuple[str, bool, dict[str, str]]] = {
     ),
 }
 
+# Fictional listings, marked [Demo]. Addresses and prices are invented, not market data.
+# organisation: (agent, approver, [(title, type, price, visibility, final status,
+#                                   property type, locality, city, beds, baths, sq ft)])
+DemoRow = tuple[str, str, str, str, str, str, str, str, int | None, int | None, str]
+DEMO_LISTINGS: dict[str, tuple[str, str, list[DemoRow]]] = {
+    "Sunrise Realty": (
+        "sunrise.agent@demo.example.com",
+        "sunrise.admin@demo.example.com",
+        [
+            ("[Demo] 3 BHK apartment near the lake", "sale", "25000000", "network", "active",
+             "apartment", "Powai", "Mumbai", 3, 2, "1250"),
+            ("[Demo] Compact studio to let", "rent", "45000", "private", "draft",
+             "apartment", "Andheri West", "Mumbai", 1, 1, "420"),
+            ("[Demo] Garden villa", "sale", "55000000", "private", "pending_review",
+             "villa", "Koregaon Park", "Pune", 4, 4, "3200"),
+            ("[Demo] Corner office space", "sale", "18000000", "network", "sold",
+             "commercial", "Baner", "Pune", None, 2, "900"),
+        ],
+    ),
+    "Harbour Homes": (
+        "two.orgs@demo.example.com",
+        "harbour.admin@demo.example.com",
+        [
+            ("[Demo] Sea-facing 2 BHK", "sale", "32000000", "network", "active",
+             "apartment", "Worli", "Mumbai", 2, 2, "980"),
+        ],
+    ),
+}  # fmt: skip
+
+
+def _context(session: Session, user: User, organisation: Organisation) -> TenantContext:
+    membership = organisations.get_membership(session, organisation.id, user.id)
+    return TenantContext(user, organisation.id, membership.role if membership else None)
+
+
+def _seed_listings(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    created: list[str] = []
+    for org_name, (agent_email, approver_email, rows) in DEMO_LISTINGS.items():
+        org = orgs[org_name]
+        if session.scalar(select(Listing.id).where(Listing.organisation_id == org.id).limit(1)):
+            continue  # this organisation already has listings; leave them alone
+        agent_user = auth.get_user_by_email(session, agent_email)
+        approver_user = auth.get_user_by_email(session, approver_email)
+        if agent_user is None or approver_user is None:
+            continue
+        agent = _context(session, agent_user, org)
+        approver = _context(session, approver_user, org)
+        for number, row in enumerate(rows, start=1):
+            title, kind, price, visibility, status, ptype, locality, city, beds, baths, sqft = row
+            prop = listings.create_property(
+                session,
+                agent,
+                PropertyCreate.model_validate(
+                    {
+                        "property_type": ptype,
+                        "address": Address(
+                            line1=f"Unit {number}, Example Towers",
+                            locality=locality,
+                            city=city,
+                            country="IN",
+                        ),
+                        "bedrooms": beds,
+                        "bathrooms": baths,
+                        "area": Area.model_validate({"value": sqft, "unit": "sqft"}),
+                    }
+                ),
+            )
+            listing = listings.create_listing(
+                session,
+                agent,
+                ListingCreate.model_validate(
+                    {
+                        "property_id": prop.id,
+                        "listing_type": kind,
+                        "title": title,
+                        "remarks": "Fictional demo listing for local development.",
+                        "list_price": {"amount": price, "currency": "INR"},
+                        "visibility": visibility,
+                    }
+                ),
+            )
+            # Walk the real lifecycle, so history and audit rows look like genuine use.
+            steps = {
+                "draft": [],
+                "pending_review": [(agent, "pending_review")],
+                "active": [(agent, "pending_review"), (approver, "active")],
+                "sold": [(agent, "pending_review"), (approver, "active"), (agent, "sold")],
+            }[status]
+            for ctx, to in steps:
+                sold_price = Money.model_validate({"amount": price, "currency": "INR"})
+                listings.transition_listing(
+                    session,
+                    ctx,
+                    listing.id,
+                    TransitionRequest(
+                        to=to,
+                        version=listing.version,
+                        sold_price=sold_price if to == "sold" else None,
+                    ),
+                )
+                session.refresh(listing)
+            created.append(f"listing {title}")
+    return created
+
 
 def seed(session: Session) -> list[str]:
     created: list[str] = []
@@ -66,7 +182,7 @@ def seed(session: Session) -> list[str]:
                 organisations.add_member(
                     session, user_id=user.id, organisation_id=orgs[org_name].id, role=role
                 )
-    return created
+    return created + _seed_listings(session, orgs)
 
 
 def main() -> int:
