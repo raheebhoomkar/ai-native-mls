@@ -23,7 +23,7 @@ No email is sent by the system. Invitation and password-reset links are shown on
 
 ## Prerequisites
 
-- Python 3.13+
+- Python 3.15.2
 - Node.js (current LTS or newer; developed on 26) and pnpm 12
 - Docker with Compose
 
