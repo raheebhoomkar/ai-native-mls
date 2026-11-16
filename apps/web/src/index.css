@@ -42,3 +42,30 @@ button {
   font: inherit;
   padding: 0.4rem 0.9rem;
 }
+
+h2 {
+  font-size: 1.15rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+form {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 22rem;
+}
+
+input {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+[role="alert"] {
+  color: #b00020;
+}
+
+@media (prefers-color-scheme: dark) {
+  [role="alert"] {
+    color: #ff8a9a;
+  }
+}
