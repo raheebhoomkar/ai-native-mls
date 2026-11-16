@@ -135,3 +135,39 @@ def test_retry_queues_a_failed_job_again(db: Session) -> None:
 def test_a_kind_cannot_have_two_handlers() -> None:
     with pytest.raises(ValueError, match="already registered"):
         jobs.handler("test.ok")(_boom)
+
+
+failed_hook_calls: list[str] = []
+
+
+def _record_failure(session: Session, job: Job) -> None:
+    failed_hook_calls.append(job.kind)
+
+
+@jobs.handler("test.boom_with_hook", on_failed=_record_failure)
+def _boom_with_hook(session: Session, job: Job) -> None:
+    raise RuntimeError("still broken")
+
+
+def test_failure_hook_runs_once_when_the_job_fails_for_good(db: Session) -> None:
+    failed_hook_calls.clear()
+    job = jobs.enqueue(db, "test.boom_with_hook", max_attempts=2)
+    db.commit()
+
+    jobs.run_one(db)
+    assert failed_hook_calls == []  # will be retried
+    job.run_after = _past()
+    db.commit()
+    jobs.run_one(db)
+    assert failed_hook_calls == ["test.boom_with_hook"]
+
+
+def test_delayed_job_waits(db: Session) -> None:
+    job = jobs.enqueue(db, "test.ok", {"name": "delayed"}, delay=timedelta(minutes=5))
+    db.commit()
+
+    assert jobs.run_one(db) is False
+    job.run_after = _past()
+    db.commit()
+    assert jobs.run_one(db) is True
+    assert calls == ["delayed"]

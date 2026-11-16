@@ -8,15 +8,19 @@ import hmac
 import secrets
 import time
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
+from io import BytesIO
 from uuid import UUID, uuid4
 
+from PIL import Image, ImageOps
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import AppError
+from app.modules.jobs import service as jobs
+from app.modules.jobs.models import Job
 from app.modules.listings import service as listings
 from app.modules.listings.models import Listing
 from app.modules.media.models import MediaAsset
@@ -24,6 +28,9 @@ from app.modules.media.storage import get_storage
 from app.modules.organisations.deps import TenantContext
 
 URL_TTL_SECONDS = 15 * 60
+THUMBNAIL_SIZE = (480, 480)
+# Pillow refuses images over twice this many pixels (decompression bombs).
+Image.MAX_IMAGE_PIXELS = 40_000_000
 
 _TYPE_ALIASES = {"image/jpg": "image/jpeg", "image/pjpeg": "image/jpeg"}
 
@@ -121,7 +128,7 @@ def upload(
         listing_id=listing.id,
         uploaded_by_user_id=ctx.user.id,
         kind="original",
-        status="ready",
+        status="processing",
         storage_key=f"{listing.organisation_id}/{asset_id}",
         filename=clean_filename(filename),
         content_type=detected,
@@ -133,7 +140,17 @@ def upload(
     # shortcut: if the transaction fails after this, the file stays orphaned in storage;
     # add a sweep for keys with no row if that is ever seen.
     get_storage().put(asset.storage_key, data, detected)
+    _enqueue_thumbnail(session, asset)
     return asset
+
+
+def _enqueue_thumbnail(session: Session, asset: MediaAsset) -> None:
+    jobs.enqueue(
+        session,
+        "media.thumbnail",
+        {"asset_id": str(asset.id)},
+        organisation_id=asset.organisation_id,
+    )
 
 
 def file_too_large() -> AppError:
@@ -156,7 +173,19 @@ def list_media(
     ).all()
 
 
-def delete(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
+def thumbnails_for(session: Session, originals: Sequence[MediaAsset]) -> dict[UUID, MediaAsset]:
+    """Thumbnail of each original that has one, keyed by the original's id."""
+    rows = session.scalars(
+        select(MediaAsset).where(
+            MediaAsset.original_id.in_([asset.id for asset in originals]),
+            MediaAsset.kind == "thumbnail",
+            MediaAsset.deleted_at.is_(None),
+        )
+    ).all()
+    return {row.original_id: row for row in rows if row.original_id is not None}
+
+
+def _get_manageable(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
     asset = session.get(MediaAsset, asset_id)
     if asset is None or asset.deleted_at is not None or asset.kind != "original":
         raise _not_found()
@@ -165,6 +194,12 @@ def delete(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
     except AppError:
         raise _not_found() from None  # same answer whether it exists or not
     _check_manage(ctx, listing)
+    return asset
+
+
+def delete(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
+    """Hide now; delete the files after the retention period (`media.purge` job)."""
+    asset = _get_manageable(session, ctx, asset_id)
     now = datetime.now(UTC)
     session.execute(
         update(MediaAsset)
@@ -172,6 +207,25 @@ def delete(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
         .values(deleted_at=now)
     )
     session.refresh(asset)
+    jobs.enqueue(
+        session,
+        "media.purge",
+        {"asset_id": str(asset.id)},
+        organisation_id=asset.organisation_id,
+        delay=timedelta(days=get_settings().media_retention_days),
+    )
+    return asset
+
+
+def retry(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
+    """Process an original again after its processing failed."""
+    asset = _get_manageable(session, ctx, asset_id)
+    if asset.status != "failed":
+        raise AppError(409, "not_failed", "Only media whose processing failed can be retried.")
+    asset.status = "processing"
+    asset.error = None
+    session.flush()
+    _enqueue_thumbnail(session, asset)
     return asset
 
 
@@ -184,3 +238,89 @@ def get_content(session: Session, asset_id: UUID) -> tuple[MediaAsset, bytes]:
         return asset, get_storage().get(asset.storage_key)
     except FileNotFoundError:
         raise _not_found() from None
+
+
+# --- Background jobs -----------------------------------------------------------------------
+
+_UNREADABLE = "The image could not be read. Upload a different file."
+
+
+def _render_thumbnail(data: bytes) -> bytes:
+    """A small JPEG. Built from pixels only, so camera metadata (GPS, device) is not copied."""
+    with Image.open(BytesIO(data)) as image:
+        image.load()
+        oriented = ImageOps.exif_transpose(image)
+        oriented.thumbnail(THUMBNAIL_SIZE)
+        if oriented.mode in ("RGBA", "LA", "P"):
+            rgba = oriented.convert("RGBA")
+            flat = Image.new("RGB", rgba.size, "white")
+            flat.paste(rgba, mask=rgba.getchannel("A"))
+        else:
+            flat = oriented.convert("RGB")
+        out = BytesIO()
+        flat.save(out, "JPEG", quality=82, optimize=True)
+        return out.getvalue()
+
+
+def _thumbnail_failed(session: Session, job: Job) -> None:
+    original = session.get(MediaAsset, UUID(job.payload["asset_id"]))
+    if original is not None and original.status == "processing":
+        original.status = "failed"
+        original.error = "Processing failed. Try again."
+
+
+@jobs.handler("media.thumbnail", on_failed=_thumbnail_failed)
+def make_thumbnail(session: Session, job: Job) -> None:
+    """Idempotent: a second run finds the thumbnail already made and only marks it ready."""
+    original = session.get(MediaAsset, UUID(job.payload["asset_id"]))
+    if original is None or original.deleted_at is not None or original.status != "processing":
+        return
+    data = get_storage().get(original.storage_key)  # storage errors raise, so the job retries
+    try:
+        thumbnail = _render_thumbnail(data)
+    except OSError, ValueError, Image.DecompressionBombError:
+        # The file itself is the problem (corrupt, truncated, too many pixels): do not retry.
+        original.status, original.error = "failed", _UNREADABLE
+        return
+
+    exists = session.scalar(
+        select(MediaAsset.id).where(
+            MediaAsset.original_id == original.id, MediaAsset.kind == "thumbnail"
+        )
+    )
+    if exists is None:
+        thumbnail_id = uuid4()
+        session.add(
+            MediaAsset(
+                id=thumbnail_id,
+                organisation_id=original.organisation_id,
+                listing_id=original.listing_id,
+                original_id=original.id,
+                uploaded_by_user_id=original.uploaded_by_user_id,
+                kind="thumbnail",
+                status="ready",
+                storage_key=f"{original.organisation_id}/{thumbnail_id}",
+                filename=original.filename,
+                content_type="image/jpeg",
+                size_bytes=len(thumbnail),
+                sha256=hashlib.sha256(thumbnail).hexdigest(),
+            )
+        )
+        session.flush()
+        get_storage().put(f"{original.organisation_id}/{thumbnail_id}", thumbnail, "image/jpeg")
+    original.status, original.error = "ready", None
+
+
+@jobs.handler("media.purge")
+def purge(session: Session, job: Job) -> None:
+    """Delete the files of removed media and its derivatives. Rows stay, for the audit trail."""
+    asset_id = UUID(job.payload["asset_id"])
+    rows = session.scalars(
+        select(MediaAsset).where(
+            (MediaAsset.id == asset_id) | (MediaAsset.original_id == asset_id),
+            MediaAsset.deleted_at.is_not(None),
+        )
+    ).all()
+    storage = get_storage()
+    for row in rows:
+        storage.delete(row.storage_key)

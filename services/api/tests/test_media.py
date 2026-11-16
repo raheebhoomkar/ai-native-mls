@@ -64,7 +64,11 @@ def test_agent_uploads_lists_and_downloads_media(
     assert asset["content_type"] == "image/png"
     assert asset["size_bytes"] == len(PNG)
     assert asset["sha256"] == hashlib.sha256(PNG).hexdigest()
-    assert (asset["status"], asset["can_delete"]) == ("ready", True)
+    assert (asset["status"], asset["can_delete"], asset["thumbnail_url"]) == (
+        "processing",
+        True,
+        None,
+    )
 
     listed = clients["broker"].get(f"{LISTINGS}/{listing['id']}/media").json()
     assert [item["id"] for item in listed] == [asset["id"]]

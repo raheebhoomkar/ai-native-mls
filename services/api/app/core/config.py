@@ -22,16 +22,27 @@ class Settings(BaseSettings):
     # Demo data at start-up. In production both must be set; see app/seed.py.
     seed_demo_data: bool = False
     seed_password: SecretStr | None = Field(default=None, min_length=12)
-    # Uploaded media. Local disk for now; see app/modules/media/storage.py.
+    # Uploaded media; see app/modules/media/storage.py. "local" keeps files under media_root
+    # (one server only). "s3" uses any S3-compatible bucket; credentials come from the usual
+    # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY variables, never from this file.
+    media_storage: Literal["local", "s3"] = "local"
     media_root: Path = REPO_ROOT / "var" / "media"
+    media_s3_bucket: str | None = None
+    # For S3-compatible services other than AWS (Cloudflare R2, MinIO, ...).
+    media_s3_endpoint_url: str | None = None
+    media_s3_region: str | None = None
+    # Removed media is kept this long before its files are deleted from storage.
+    media_retention_days: int = Field(default=7, ge=0, le=3650)
     media_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
-    # Signs short-lived media download URLs. Required in production; see `_media_key_in_production`.
+    # Signs short-lived media download URLs. Required in production.
     media_signing_key: SecretStr | None = Field(default=None, min_length=32)
 
     @model_validator(mode="after")
-    def _media_key_in_production(self) -> Self:
+    def _check_media(self) -> Self:
         if self.environment == "production" and self.media_signing_key is None:
             raise ValueError("MEDIA_SIGNING_KEY must be set in production.")
+        if self.media_storage == "s3" and not self.media_s3_bucket:
+            raise ValueError("MEDIA_S3_BUCKET must be set when MEDIA_STORAGE is s3.")
         return self
 
     @field_validator("database_url", mode="before")

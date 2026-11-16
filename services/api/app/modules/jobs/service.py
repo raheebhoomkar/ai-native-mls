@@ -35,15 +35,22 @@ BACKOFF = timedelta(seconds=30)
 _MAX_ERROR_LENGTH = 2000
 
 _handlers: dict[str, Handler] = {}
+_failure_handlers: dict[str, Handler] = {}
 
 
-def handler(kind: str) -> Callable[[Handler], Handler]:
-    """Register the function that runs jobs of `kind`. One handler per kind."""
+def handler(kind: str, *, on_failed: Handler | None = None) -> Callable[[Handler], Handler]:
+    """Register the function that runs jobs of `kind`. One handler per kind.
+
+    `on_failed` runs once, in the transaction that marks the job failed for good, so the
+    caller can record the failure on its own records (for example, show it to a user).
+    """
 
     def _register(function: Handler) -> Handler:
         if kind in _handlers and _handlers[kind] is not function:
             raise ValueError(f"A handler for job kind {kind!r} is already registered.")
         _handlers[kind] = function
+        if on_failed is not None:
+            _failure_handlers[kind] = on_failed
         return function
 
     return _register
@@ -56,6 +63,7 @@ def enqueue(
     *,
     organisation_id: UUID | None = None,
     max_attempts: int = 3,
+    delay: timedelta | None = None,
 ) -> Job:
     """Add a job to the caller's transaction. It becomes visible to workers on commit."""
     job = Job(
@@ -64,6 +72,8 @@ def enqueue(
         organisation_id=organisation_id,
         max_attempts=max_attempts,
     )
+    if delay is not None:
+        job.run_after = func.now() + delay
     session.add(job)
     session.flush()
     return job
@@ -87,7 +97,7 @@ def _claim(session: Session) -> Job | None:
     if job is None:
         return None
     if job.status == "running" and job.attempts >= job.max_attempts:
-        _finish(job, "failed", "The worker stopped during the last attempt.")
+        _fail(session, job, "The worker stopped during the last attempt.")
         return job
     job.status = "running"
     job.attempts += 1
@@ -100,6 +110,19 @@ def _finish(job: Job, status: str, error: str | None = None) -> None:
     job.last_error = error
     job.locked_at = None
     job.finished_at = func.now()
+
+
+def _fail(session: Session, job: Job, error: str) -> None:
+    _finish(job, "failed", error)
+    hook = _failure_handlers.get(job.kind)
+    if hook is None:
+        return
+    try:
+        with session.begin_nested():
+            hook(session, job)
+    except Exception:
+        # The job stays failed either way; a broken hook must not stop the worker.
+        logger.exception("Job failure hook failed", extra={"job_id": str(job.id)})
 
 
 def run_one(session: Session) -> bool:
@@ -132,7 +155,7 @@ def run_one(session: Session) -> bool:
             failed.locked_at = None
             failed.run_after = func.now() + BACKOFF * 2 ** (failed.attempts - 1)
         else:
-            _finish(failed, "failed", message)
+            _fail(session, failed, message)
     else:
         _finish(job, "succeeded")
     session.commit()

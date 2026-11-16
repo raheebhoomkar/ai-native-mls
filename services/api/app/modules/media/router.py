@@ -37,10 +37,12 @@ class MediaOut(BaseModel):
     created_at: datetime
     # Signed and short-lived; fetch the list again for fresh links.
     url: str
+    # Set once processing has made the thumbnail.
+    thumbnail_url: str | None
     can_delete: bool
 
 
-def _out(asset: MediaAsset, *, can_delete: bool) -> MediaOut:
+def _out(asset: MediaAsset, *, can_delete: bool, thumbnail: MediaAsset | None = None) -> MediaOut:
     return MediaOut(
         id=asset.id,
         listing_id=asset.listing_id,
@@ -52,6 +54,7 @@ def _out(asset: MediaAsset, *, can_delete: bool) -> MediaOut:
         error=asset.error,
         created_at=asset.created_at,
         url=service.signed_url(asset.id),
+        thumbnail_url=service.signed_url(thumbnail.id) if thumbnail else None,
         can_delete=can_delete,
     )
 
@@ -73,7 +76,8 @@ async def _body(request: Request, content_length: Annotated[int | None, Header()
 def list_listing_media(listing_id: UUID, ctx: CanRead, session: SessionDep) -> list[MediaOut]:
     listing, assets = service.list_media(session, ctx, listing_id)
     manage = service.can_manage(ctx, listing)
-    return [_out(asset, can_delete=manage) for asset in assets]
+    thumbnails = service.thumbnails_for(session, assets)
+    return [_out(asset, can_delete=manage, thumbnail=thumbnails.get(asset.id)) for asset in assets]
 
 
 @listing_media_router.post(
@@ -130,6 +134,12 @@ def delete_media(asset_id: UUID, request: Request, ctx: CanWrite, session: Sessi
         ip_address=client_ip(request),
         detail={"listing_id": str(asset.listing_id)},
     )
+
+
+@media_router.post("/{asset_id}/retry", responses=_ERRORS)
+def retry_media(asset_id: UUID, ctx: CanWrite, session: SessionDep) -> MediaOut:
+    """Process again media whose processing failed."""
+    return _out(service.retry(session, ctx, asset_id), can_delete=True)
 
 
 @media_router.get(
