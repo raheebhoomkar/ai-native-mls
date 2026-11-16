@@ -49,6 +49,15 @@ def get_organisation(session: Session, organisation_id: UUID) -> Organisation | 
     return session.get(Organisation, organisation_id)
 
 
+def get_names(session: Session, organisation_ids: list[UUID]) -> dict[UUID, str]:
+    if not organisation_ids:
+        return {}
+    rows = session.execute(
+        select(Organisation.id, Organisation.name).where(Organisation.id.in_(organisation_ids))
+    )
+    return {row[0]: row[1] for row in rows}
+
+
 def get_membership(session: Session, organisation_id: UUID, user_id: UUID) -> Membership | None:
     return session.scalar(
         select(Membership).where(

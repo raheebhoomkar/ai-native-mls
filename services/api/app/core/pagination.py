@@ -9,6 +9,7 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -81,7 +82,9 @@ def _from_cursor_value(column: InstrumentedAttribute[Any], raw: Any) -> Any:
             return datetime.fromisoformat(raw)
         if python_type is UUID:
             return UUID(raw)
-    except (TypeError, ValueError, AttributeError):
+        if python_type is Decimal:
+            return Decimal(raw)
+    except (TypeError, ValueError, AttributeError, InvalidOperation):
         raise _invalid_cursor() from None
     if not isinstance(raw, python_type):
         raise _invalid_cursor()

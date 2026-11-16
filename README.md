@@ -2,7 +2,7 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–2 are complete: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations, member and role management, profile, password change and reset, organisation switcher. Module 1 is complete. Listings, media and AI features are not built yet. There is no live demo URL yet.
+**Status:** Sprints 0–3 are complete: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; and the property and listing API (lifecycle, search, sharing between organisations). Listings have no screens yet: use the API docs page until Sprint 4. Media and AI features are not built yet. There is no live demo URL yet.
 
 No email is sent by the system. Invitation and password-reset links are shown once to the administrator, who passes them on.
 
@@ -116,6 +116,8 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 - Browser sign-in uses an httpOnly session cookie set by `POST /api/v1/auth/login`. API keys for third-party clients come in a later sprint.
 - Tenant-scoped endpoints act in one organisation. Send `X-Organisation-ID`; it may be omitted when you belong to exactly one organisation. Asking for an organisation you cannot access returns 403 whether or not it exists.
+- Money and areas are strings holding exact decimals, with a currency code or unit: `{ "amount": "25000000.00", "currency": "INR" }`.
+- Editable records carry a `version`. Send the version you read with every change; `409 version_conflict` means someone else changed it first.
 - Collections use cursor pagination: `limit` (1–100, default 20) and `cursor`; responses are `{ "items": [...], "next_cursor": "…" | null }`.
 
 ## Database migrations
@@ -128,4 +130,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md).
