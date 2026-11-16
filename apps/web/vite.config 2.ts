@@ -1,0 +1,16 @@
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    // Same-origin API calls in development; no CORS configuration needed.
+    proxy: { "/api": "http://localhost:8000" },
+  },
+  test: {
+    environment: "jsdom",
+    // Browser end-to-end tests in e2e/ are run by Playwright, not Vitest.
+    include: ["src/**/*.test.{ts,tsx}"],
+  },
+});
