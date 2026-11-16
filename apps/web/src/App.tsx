@@ -1,77 +1,115 @@
 import { useCallback, useEffect, useState } from "react";
 
-type Health =
-  | { state: "loading" }
-  | { state: "ok" }
-  | { state: "error"; message: string; requestId: string | null };
+import { api, ApiError, describeError, type Me } from "./api";
+import { LoginForm } from "./LoginForm";
+import { SystemStatus } from "./SystemStatus";
 
-async function fetchHealth(): Promise<Health> {
+type Session =
+  | { state: "loading" }
+  | { state: "signed-out" }
+  | { state: "signed-in"; me: Me }
+  | { state: "error"; message: string };
+
+const ROLE_LABELS: Record<Me["memberships"][number]["role"], string> = {
+  mls_admin: "MLS administrator",
+  brokerage_admin: "Brokerage administrator",
+  broker: "Broker",
+  agent: "Agent",
+  api_consumer: "API consumer",
+};
+
+async function loadSession(): Promise<Session> {
   try {
-    const response = await fetch("/api/v1/health");
-    if (response.ok) return { state: "ok" };
-    // Non-2xx responses use the API error envelope; a proxy failure may not be JSON.
-    const body = await response.json().catch(() => null);
-    return {
-      state: "error",
-      message:
-        body?.error?.message ??
-        `The API responded with status ${response.status}.`,
-      requestId: response.headers.get("X-Request-ID"),
-    };
-  } catch {
-    return {
-      state: "error",
-      message: "The API is not reachable.",
-      requestId: null,
-    };
+    return { state: "signed-in", me: await api<Me>("/auth/me") };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401)
+      return { state: "signed-out" };
+    return { state: "error", message: describeError(error) };
   }
 }
 
 export function App() {
-  const [health, setHealth] = useState<Health>({ state: "loading" });
+  const [session, setSession] = useState<Session>({ state: "loading" });
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
-  const check = useCallback(() => {
-    setHealth({ state: "loading" });
-    void fetchHealth().then(setHealth);
+  const retry = useCallback(() => {
+    setSession({ state: "loading" });
+    void loadSession().then(setSession);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchHealth().then((result) => {
-      if (!cancelled) setHealth(result);
+    void loadSession().then((result) => {
+      if (!cancelled) setSession(result);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
+  async function signOut() {
+    setSignOutError(null);
+    try {
+      await api("/auth/logout", { method: "POST" });
+    } catch (error) {
+      // An already-expired session is as good as signed out.
+      if (!(error instanceof ApiError && error.status === 401)) {
+        setSignOutError(describeError(error));
+        return;
+      }
+    }
+    setSession({ state: "signed-out" });
+  }
+
   return (
     <main>
       <h1>AI-Native MLS</h1>
-      <p>Foundation build. Sign-in and listings arrive in later sprints.</p>
-      <section aria-labelledby="status-heading">
-        <h2 id="status-heading">System status</h2>
-        <dl aria-live="polite">
-          <dt>API and database</dt>
-          <dd>
-            {health.state === "loading" && "Checking…"}
-            {health.state === "ok" && "Operational"}
-            {health.state === "error" && (
-              <span role="alert">
-                Unavailable: {health.message}
-                {health.requestId && ` (request ${health.requestId})`}
-              </span>
-            )}
-          </dd>
-        </dl>
-        <button
-          type="button"
-          onClick={check}
-          disabled={health.state === "loading"}
-        >
-          Check again
-        </button>
-      </section>
+
+      {session.state === "loading" && <p>Loading…</p>}
+
+      {session.state === "error" && (
+        <section>
+          <p role="alert">Could not load your session: {session.message}</p>
+          <button type="button" onClick={retry}>
+            Try again
+          </button>
+        </section>
+      )}
+
+      {session.state === "signed-out" && (
+        <LoginForm
+          onSignedIn={(me) => setSession({ state: "signed-in", me })}
+        />
+      )}
+
+      {session.state === "signed-in" && (
+        <section aria-labelledby="account-heading">
+          <h2 id="account-heading">Your account</h2>
+          <p>
+            Signed in as {session.me.user.full_name} ({session.me.user.email})
+            {session.me.user.is_platform_admin && " · Platform administrator"}
+          </p>
+          <h3>Organisations</h3>
+          {session.me.memberships.length === 0 ? (
+            <p>You do not belong to an organisation yet.</p>
+          ) : (
+            <ul>
+              {session.me.memberships.map((membership) => (
+                <li key={membership.organisation_id}>
+                  {membership.organisation_name} —{" "}
+                  {ROLE_LABELS[membership.role]}
+                </li>
+              ))}
+            </ul>
+          )}
+          {signOutError && <p role="alert">{signOutError}</p>}
+          <button type="button" onClick={signOut}>
+            Sign out
+          </button>
+        </section>
+      )}
+
+      <SystemStatus />
     </main>
   );
 }

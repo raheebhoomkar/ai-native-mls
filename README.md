@@ -2,7 +2,7 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprint 0 (Module 0, foundation) is complete. The repository contains a running API with a health endpoint, a web shell that shows system status, local Postgres, and CI. Authentication, listings, media and AI features are not built yet. There is no live demo URL yet.
+**Status:** Sprints 0 and 1 are complete: foundation, then sign-in, organisations (tenants), role-based permissions and an audit log. Users and memberships can only be created from the command line or directly in the database until Sprint 2 adds invitations and the admin screens. Listings, media and AI features are not built yet. There is no live demo URL yet.
 
 ## Layout
 
@@ -11,6 +11,7 @@ An API-first, AI-assisted Multiple Listing Service for real-estate professionals
 | `services/api` | FastAPI modular monolith. Shared code in `app/core`, one directory per feature in `app/modules`. |
 | `apps/web` | React + Vite web app (responsive; PWA planned). |
 | `docs/decisions` | Architecture decision records. |
+| `docs/security` | Role and permission matrix. |
 | `docs/modules` | Per-sprint implementation notes and acceptance results. |
 | `docker-compose.yml` | Local Postgres only. |
 
@@ -39,7 +40,14 @@ pnpm install
 pnpm dev
 ```
 
-- Web app: http://localhost:5173
+Create the first platform administrator (the password is prompted for, minimum 12 characters):
+
+```bash
+cd services/api
+.venv/bin/python -m app.modules.auth.cli create-platform-admin --email you@example.com --name "Your Name"
+```
+
+- Web app (sign in here): http://localhost:5173
 - Health check: http://localhost:8000/api/v1/health
 - API docs (disabled when `ENVIRONMENT=production`): http://localhost:8000/api/v1/docs
 
@@ -54,6 +62,7 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 | `DATABASE_URL` | yes | none | Postgres URL, `postgresql+psycopg://user:pass@host:port/db` |
 | `ENVIRONMENT` | no | `development` | `development`, `test` or `production` |
 | `LOG_LEVEL` | no | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
+| `SESSION_TTL_HOURS` | no | `12` | How long a sign-in lasts (1–720) |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | no | `mls`, `mls`, `mls`, `5432` | Used only by `docker-compose.yml` |
 
 ## Checks
@@ -85,6 +94,8 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
   }
   ```
 
+- Browser sign-in uses an httpOnly session cookie set by `POST /api/v1/auth/login`. API keys for third-party clients come in a later sprint.
+- Tenant-scoped endpoints act in one organisation. Send `X-Organisation-ID`; it may be omitted when you belong to exactly one organisation. Asking for an organisation you cannot access returns 403 whether or not it exists.
 - Collections use cursor pagination: `limit` (1–100, default 20) and `cursor`; responses are `{ "items": [...], "next_cursor": "…" | null }`.
 
 ## Database migrations
@@ -97,4 +108,4 @@ cd services/api
 
 ## Known limitations
 
-See [docs/modules/s0-foundation.md](docs/modules/s0-foundation.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md).

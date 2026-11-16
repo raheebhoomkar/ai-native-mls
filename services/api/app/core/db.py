@@ -19,9 +19,20 @@ def get_engine() -> Engine:
 
 
 def get_session() -> Iterator[Session]:
-    """One transaction per request: commit on success, roll back on any error."""
-    with Session(get_engine()) as session, session.begin():
-        yield session
+    """One transaction per request: commit on success, roll back on any error.
+
+    A handler may call `session.commit()` early to keep a record (for example a
+    failed-login audit event) before raising.
+    """
+    with Session(get_engine()) as session:
+        try:
+            yield session
+            session.commit()
+        except BaseException:
+            session.rollback()
+            raise
 
 
-SessionDep = Annotated[Session, Depends(get_session)]
+# scope="function": the commit runs before the response is sent, so a failed commit
+# becomes an error response instead of a success the client should not have seen.
+SessionDep = Annotated[Session, Depends(get_session, scope="function")]

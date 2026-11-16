@@ -14,6 +14,8 @@ dependencies = [
     "psycopg[binary]>=3.3,<4",
     "alembic>=1.20,<2",
     "pydantic-settings>=2.16,<3",
+    "argon2-cffi>=25.1,<26",
+    "email-validator>=2.4,<3",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +37,8 @@ target-version = "py313"
 select = ["E", "F", "I", "B", "UP", "S", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]
+# Tests assert freely and use fixed test-only passwords.
+"tests/*" = ["S101", "S105", "S106"]
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI dependency markers are evaluated once by design.
