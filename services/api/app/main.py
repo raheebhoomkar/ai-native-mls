@@ -7,6 +7,7 @@ from app.core.logging import configure_logging
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.health.router import router as health_router
+from app.modules.jobs import models as _jobs_models  # noqa: F401  # no routes; registers the table
 from app.modules.listings.router import listings_router, properties_router
 from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
