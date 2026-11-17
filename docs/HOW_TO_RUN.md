@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 14 of the plan are done (Phases A and B). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 15 of the plan are done (Phases A and B, and S15 of Phase C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -22,6 +22,7 @@ Sprints 0 to 14 of the plan are done (Phases A and B). Per-sprint notes, with de
 | Maps and location | See where a property is and how exact the point is; set it by hand; show listings on a map and search the visible area | `s12-geospatial.md` |
 | Semantic search | Describe the home in your own words; listings are ranked by match, with the reason shown | `s13-semantic-search.md` |
 | Valuation | Estimate a range from comparable reported sales, with comps, assumptions and a days-on-market simulation | `s14-valuation.md` |
+| Workflow | Run every step on a listing at once (locate, read photos, policy check, search index, valuation) and follow each step | `s15-workflow-core.md` |
 
 ## 1. Prerequisites
 
@@ -267,6 +268,14 @@ Estimates use sold listings the caller may see whose sale price the listing agen
 5. As `harbour.admin@demo.example.com`, open the shared lake listing: there is no "Valuation" section. `POST /api/v1/listings/{id}/valuations` answers 404.
 6. Reproducibility: `POST /api/v1/listings/{id}/valuations` with `{"seed": 42}` twice gives the same `result.simulation`.
 7. Outcome: value a listing, then mark it sold with a price; with the worker running, the valuation shows "Sold for … The estimate's middle was …% above/below it, inside/outside the range." `GET /api/v1/valuations/evaluation` reports the count, median absolute error and share inside the range per model version.
+
+### 6.12a Workflow (worker must be running)
+
+1. Sign in as `sunrise.agent@demo.example.com` and open one of your listings.
+2. In "Workflow", click "Run workflow". The button changes to "Workflow running…" and each step shows its status.
+3. Within about a minute the status reads "Finished." Steps show "Finished" or "Skipped" with the reason (for example, no photos). The Policy check and Valuation sections now show the new check and estimate.
+4. Click "Run workflow" twice quickly: the second click is refused while a run is active.
+5. Sign in as `harbour.admin@demo.example.com` and open the same listing if it is shared: there is no Workflow section.
 
 ### 6.13 API checks
 
