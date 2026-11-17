@@ -20,7 +20,7 @@ dependencies = [
     "boto3>=1.44,<2",
     # Below 5: OpenCV 5 dropped the Haar cascades used for face detection.
     "opencv-python-headless>=4.14,<5",
-    "langgraph>=1.2,<2",
+    "langgraph>=1.2.22,<2",
 ]
 
 [project.optional-dependencies]
