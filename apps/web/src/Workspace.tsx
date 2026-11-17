@@ -1,7 +1,14 @@
 /** The signed-in application: navigation, organisation switcher and pages. */
 
-import { useCallback, useEffect, useState } from "react";
-import { NavLink, Navigate, Route, Routes } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 
 import { PlatformAdmin, Profile } from "./Account";
 import {
@@ -15,7 +22,9 @@ import {
   setActiveOrganisation,
 } from "./api";
 import { ApiKeys } from "./ApiKeys";
+import { Audit } from "./Audit";
 import { ComplianceQueue } from "./ComplianceQueue";
+import { Dashboard } from "./Dashboard";
 import { Monitor } from "./Monitor";
 import { Notifications, NotificationsLink } from "./Notifications";
 import { Webhooks } from "./Webhooks";
@@ -65,6 +74,20 @@ export function Workspace({
   const [current, setCurrent] = useState<Current>({ state: "loading" });
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const isPlatformAdmin = me.user.is_platform_admin;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const firstPath = useRef(pathname);
+
+  // After navigating, close the phone menu and move focus to the new page, as a full
+  // page load would; screen readers then start reading the new content.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- follows the route
+    setMenuOpen(false);
+    if (pathname === firstPath.current) return;
+    firstPath.current = pathname;
+    document.getElementById("content")?.focus();
+  }, [pathname]);
 
   // Members choose among their memberships; platform administrators among all organisations.
   const loadOptions = useCallback(async () => {
@@ -141,11 +164,25 @@ export function Workspace({
   const canSeeListings = organisation?.my_permissions.includes("listing:read");
   const canReview = organisation?.my_permissions.includes("listing:publish");
   const canManageKeys = organisation?.my_permissions.includes("member:manage");
+  const canAudit = organisation?.my_permissions.includes("audit:read");
 
   return (
     <>
       <header className="bar">
-        <nav aria-label="Main">
+        <button
+          type="button"
+          className="menu-button"
+          aria-expanded={menuOpen}
+          aria-controls="main-nav"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          Menu
+        </button>
+        <nav
+          id="main-nav"
+          aria-label="Main"
+          className={menuOpen ? "open" : undefined}
+        >
           <NavLink to="/" end>
             Home
           </NavLink>
@@ -155,6 +192,7 @@ export function Workspace({
           {canSeeMembers && <NavLink to="/members">Members</NavLink>}
           {canManageKeys && <NavLink to="/api-keys">API keys</NavLink>}
           {canManageKeys && <NavLink to="/webhooks">Webhooks</NavLink>}
+          {canAudit && <NavLink to="/audit">Audit</NavLink>}
           {organisation && (
             <NotificationsLink organisationId={organisation.id} />
           )}
@@ -216,6 +254,7 @@ export function Workspace({
                   </p>
                 )}
               </section>
+              {organisation && <Dashboard organisation={organisation} />}
               <SystemStatus />
             </>
           }
@@ -298,6 +337,18 @@ export function Workspace({
           }
         />
         <Route
+          path="/audit"
+          element={
+            organisation && canAudit ? (
+              <Audit organisation={organisation} />
+            ) : current.state === "ready" || current.state === "error" ? (
+              <p>Only administrators see the audit log.</p>
+            ) : (
+              <p>Loading…</p>
+            )
+          }
+        />
+        <Route
           path="/notifications"
           element={
             organisation ? (
@@ -339,7 +390,14 @@ export function Workspace({
           path="/admin"
           element={
             isPlatformAdmin ? (
-              <PlatformAdmin onOrganisationCreated={() => void loadOptions()} />
+              <PlatformAdmin
+                organisations={options}
+                onOrganisationCreated={() => void loadOptions()}
+                onWorkIn={(id) => {
+                  setSelected(id);
+                  void navigate("/");
+                }}
+              />
             ) : (
               <Navigate to="/" replace />
             )

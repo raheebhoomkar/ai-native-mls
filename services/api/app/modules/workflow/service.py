@@ -24,7 +24,7 @@ from uuid import UUID
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -516,6 +516,16 @@ def list_org_runs(
     elif status is not None:
         query = query.where(WorkflowRun.status == status)
     return session.scalars(query.order_by(WorkflowRun.created_at.desc()).limit(limit)).all()
+
+
+def count_by_status(session: Session, organisation_id: UUID) -> dict[str, int]:
+    """Counts of the organisation's workflow runs, by status."""
+    query = (
+        select(WorkflowRun.status, func.count())
+        .where(WorkflowRun.organisation_id == organisation_id)
+        .group_by(WorkflowRun.status)
+    )
+    return {status: count for status, count in session.execute(query)}
 
 
 def ensure_no_open_run(session: Session, listing_id: UUID) -> None:

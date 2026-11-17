@@ -15,7 +15,10 @@ test("agent runs the workflow, comments, sees it on the monitor, and cleans up",
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText(/Working in Sunrise Realty/)).toBeVisible();
 
-  await page.getByRole("link", { name: "Listings" }).click();
+  await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Listings" })
+    .click();
   await page.getByRole("link", { name: "New listing" }).click();
   await page.getByLabel("Address line 1").fill("2 Workflow Way");
   await page.getByLabel("City").fill("Mumbai");
@@ -46,7 +49,10 @@ test("agent runs the workflow, comments, sees it on the monitor, and cleans up",
   ).toBeVisible();
 
   // The run is on the monitor.
-  await page.getByRole("link", { name: "Monitor" }).click();
+  await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Monitor" })
+    .click();
   await page.getByLabel("Show").selectOption("");
   await expect(page.getByRole("link", { name: title }).first()).toBeVisible();
 

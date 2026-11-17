@@ -475,6 +475,99 @@ test("system status reports an unavailable database and an unreachable API", asy
   });
   render(<App />);
   expect(
-    await screen.findByText(/Unavailable: The API is not reachable\./),
+    await screen.findByText(/Unavailable: The server cannot be reached\./),
   ).toBeTruthy();
+});
+
+const DASHBOARD = {
+  listings: null,
+  workflows: null,
+  review_queue: null,
+  failed_jobs: null,
+  unread_notifications: 0,
+};
+
+test("the phone menu opens and closes, and navigating moves focus to the page", async () => {
+  stubApi({
+    "GET /api/v1/auth/me": () => Response.json(AGENT),
+    "GET /api/v1/organisations/current": () => Response.json(AS_AGENT),
+    "GET /api/v1/dashboard": () => Response.json(DASHBOARD),
+  });
+  render(<App />);
+
+  const menu = await screen.findByRole("button", { name: "Menu" });
+  expect(menu.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(menu);
+  expect(menu.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByRole("navigation", { name: "Main" }).className).toBe(
+    "open",
+  );
+
+  fireEvent.click(screen.getByRole("link", { name: "Profile" }));
+  await screen.findByRole("heading", { name: "Your profile" });
+  expect(menu.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement?.id).toBe("content");
+
+  // The skip link focuses the main content without changing the route.
+  menu.focus();
+  fireEvent.click(screen.getByRole("link", { name: "Skip to main content" }));
+  expect(document.activeElement?.id).toBe("content");
+  expect(window.location.hash).toBe("#/profile");
+});
+
+test("an offline banner shows while the connection is down", async () => {
+  stubApi(signedOut);
+  const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  render(<App />);
+  window.dispatchEvent(new Event("offline"));
+  expect(await screen.findByText(/You are offline\./)).toBeTruthy();
+
+  online.mockReturnValue(true);
+  window.dispatchEvent(new Event("online"));
+  await waitFor(() =>
+    expect(screen.queryByText(/You are offline\./)).toBeNull(),
+  );
+  online.mockRestore();
+});
+
+test("platform administrator lists organisations and works in one", async () => {
+  window.location.hash = "#/admin";
+  const calls = stubApi({
+    "GET /api/v1/auth/me": () =>
+      Response.json({
+        user: { ...AGENT.user, is_platform_admin: true },
+        memberships: [],
+      }),
+    "GET /api/v1/organisations?limit=100": () =>
+      Response.json({
+        items: [
+          { id: "o1", name: "Acme Realty", kind: "brokerage" },
+          { id: "o2", name: "Beta Homes", kind: "mls" },
+        ],
+        next_cursor: null,
+      }),
+    "GET /api/v1/organisations/current": (call) =>
+      Response.json(
+        call.organisation === "o2"
+          ? {
+              ...organisation("Beta Homes", "", []),
+              id: "o2",
+              kind: "mls",
+              my_role: null,
+            }
+          : AS_AGENT,
+      ),
+    "GET /api/v1/dashboard": () => Response.json(DASHBOARD),
+  });
+  render(<App />);
+
+  const table = await screen.findByRole("table", { name: "Organisations" });
+  expect(table.textContent).toContain("MLS");
+  fireEvent.click(screen.getByRole("button", { name: "Work in Beta Homes" }));
+  expect(
+    await screen.findByText(
+      /Working in Beta Homes \(MLS\) as platform administrator, not a member/,
+    ),
+  ).toBeTruthy();
+  expect(calls.at(-1)?.organisation).toBe("o2");
 });

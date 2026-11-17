@@ -18,6 +18,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.collaboration.router import comments_router, notifications_router
 from app.modules.collaboration.router import listing_router as collaboration_router
 from app.modules.compliance.router import compliance_router, listing_scans_router
+from app.modules.dashboard.router import router as dashboard_router
 from app.modules.health.router import router as health_router
 from app.modules.imports.router import imports_router, listing_import_router
 from app.modules.jobs.router import router as jobs_router
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     v1.include_router(organisations_router)
     v1.include_router(invitations_router)
     v1.include_router(audit_router)
+    v1.include_router(dashboard_router)
     v1.include_router(properties_router)
     v1.include_router(listings_router)
     v1.include_router(listing_media_router)

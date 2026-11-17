@@ -40,7 +40,7 @@ export async function api<T>(
     });
   } catch {
     // Status 0 means the request never reached the API.
-    throw new ApiError(0, "unreachable", "The API is not reachable.", null);
+    throw unreachable();
   }
   if (response.ok) {
     return (response.status === 204 ? undefined : await response.json()) as T;
@@ -48,6 +48,14 @@ export async function api<T>(
   // Errors use the API envelope; a proxy failure may not be JSON.
   const body = await response.json().catch(() => null);
   throw toApiError(response.status, body, response.headers.get("X-Request-ID"));
+}
+
+/** Status 0: the request never reached the API. */
+function unreachable() {
+  const message = navigator.onLine
+    ? "The server cannot be reached. Try again in a moment."
+    : "You are offline. Try again when the connection is back.";
+  return new ApiError(0, "unreachable", message, null);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,8 +84,7 @@ export function uploadFile<T>(
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded / event.total);
     };
-    xhr.onerror = () =>
-      reject(new ApiError(0, "unreachable", "The API is not reachable.", null));
+    xhr.onerror = () => reject(unreachable());
     xhr.onload = () => {
       let body = null;
       try {

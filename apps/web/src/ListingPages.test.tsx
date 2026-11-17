@@ -273,8 +273,9 @@ test("a listing shared by another organisation is read-only with no history requ
       /Shared by Beta Homes\. You can view this listing but not change it\./,
     ),
   ).toBeTruthy();
-  // The only button left on the page is the header's Sign out.
+  // The only buttons left on the page are the header's phone menu and Sign out.
   expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+    "Menu",
     "Sign out",
   ]);
   expect(screen.queryByRole("link", { name: "Edit" })).toBeNull();

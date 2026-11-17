@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
@@ -101,10 +101,16 @@ def list_notifications(
     if unread_only:
         query = query.where(Notification.read_at.is_(None))
     rows = session.scalars(query.order_by(Notification.created_at.desc()).limit(50)).all()
-    unread = len(
-        session.scalars(select(Notification.id).where(mine, Notification.read_at.is_(None))).all()
+    return rows, unread_count(session, ctx)
+
+
+def unread_count(session: Session, ctx: TenantContext) -> int:
+    query = select(func.count()).where(
+        Notification.user_id == ctx.user.id,
+        Notification.organisation_id == ctx.organisation_id,
+        Notification.read_at.is_(None),
     )
-    return rows, unread
+    return session.scalar(query) or 0
 
 
 def mark_read(session: Session, ctx: TenantContext, notification_id: UUID | None) -> None:

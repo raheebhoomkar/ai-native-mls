@@ -332,6 +332,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/properties": {
         parameters: {
             query?: never;
@@ -1691,6 +1708,10 @@ export interface components {
             occurred_at: string;
             /** Actor User Id */
             actor_user_id: string | null;
+            /** Actor Name */
+            actor_name?: string | null;
+            /** Actor Email */
+            actor_email?: string | null;
             /** Organisation Id */
             organisation_id: string | null;
             /** Action */
@@ -2067,6 +2088,29 @@ export interface components {
             my_permissions: ("organisation:read" | "member:read" | "member:manage" | "audit:read" | "listing:read" | "listing:write" | "listing:manage_all" | "listing:publish")[];
             /** Assignable Roles */
             assignable_roles: ("mls_admin" | "brokerage_admin" | "broker" | "agent" | "api_consumer")[];
+        };
+        /**
+         * DashboardOut
+         * @description A part is null when your permissions do not cover it.
+         */
+        DashboardOut: {
+            listings: components["schemas"]["ListingCounts"] | null;
+            /**
+             * Workflows
+             * @description Workflow runs by status.
+             */
+            workflows: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Review Queue
+             * @description Policy findings waiting for you to review.
+             */
+            review_queue: number | null;
+            /** Failed Jobs */
+            failed_jobs: number | null;
+            /** Unread Notifications */
+            unread_notifications: number;
         };
         /**
          * DecisionIn
@@ -2536,6 +2580,23 @@ export interface components {
             run_after: string;
             /** Finished At */
             finished_at: string | null;
+        };
+        /** ListingCounts */
+        ListingCounts: {
+            /**
+             * Organisation
+             * @description The organisation's listings that are not archived, by status.
+             */
+            organisation: {
+                [key: string]: number;
+            };
+            /**
+             * Mine
+             * @description Listings where you are the agent, by status.
+             */
+            mine: {
+                [key: string]: number;
+            };
         };
         /** ListingCreate */
         ListingCreate: {
@@ -4522,6 +4583,10 @@ export interface operations {
     list_audit_events_api_v1_audit_events_get: {
         parameters: {
             query?: {
+                /** @description Action prefix, such as `listing.`. */
+                action?: string | null;
+                actor_user_id?: string | null;
+                target_id?: string | null;
                 limit?: number;
                 cursor?: string | null;
             };
@@ -4543,6 +4608,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_AuditEventOut_"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
                 };
             };
             /** @description Unauthorized */

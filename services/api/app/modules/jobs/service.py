@@ -175,6 +175,13 @@ def get_job(session: Session, job_id: UUID) -> Job | None:
     return session.get(Job, job_id)
 
 
+def count_failed(session: Session, organisation_id: UUID) -> int:
+    query = select(func.count()).where(
+        Job.organisation_id == organisation_id, Job.status == "failed"
+    )
+    return session.scalar(query) or 0
+
+
 def retry(session: Session, job: Job) -> Job:
     """Queue a failed job again with a fresh set of attempts. Callers check permissions."""
     if job.status != "failed":

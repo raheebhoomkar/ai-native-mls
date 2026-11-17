@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, Select, and_, exists, or_, select
+from sqlalchemy import ColumnElement, Select, and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -365,6 +365,20 @@ def list_listings(
         id_column=Listing.id,
         descending=filters.sort in ("newest", "price_desc"),
     )
+
+
+def count_by_status(
+    session: Session, organisation_id: UUID, agent_user_id: UUID | None = None
+) -> dict[str, int]:
+    """Counts of an organisation's listings that are not archived, by status."""
+    query = (
+        select(Listing.status, func.count())
+        .where(Listing.organisation_id == organisation_id, Listing.archived_at.is_(None))
+        .group_by(Listing.status)
+    )
+    if agent_user_id is not None:
+        query = query.where(Listing.listing_agent_user_id == agent_user_id)
+    return {status: count for status, count in session.execute(query)}
 
 
 def update_listing(
