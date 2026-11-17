@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api, describeError } from "./api";
 import type { components } from "./api-schema";
 import { POLL_MS } from "./ListingMedia";
+import { AiTag } from "./ui";
 
 type Media = components["schemas"]["MediaOut"];
 type Run = components["schemas"]["RedactionRunOut"];
@@ -100,7 +101,10 @@ export function ListingRedaction({
 
   return (
     <section aria-labelledby="redaction-heading" className="redaction">
-      <h3 id="redaction-heading">Privacy redaction</h3>
+      <div className="panel-head">
+        <h3 id="redaction-heading">Privacy redaction</h3>
+        <AiTag>Image analysis</AiTag>
+      </div>
       <p>
         <small>
           Makes a copy of a photo with faces, licence plates, phone numbers,
@@ -118,7 +122,7 @@ export function ListingRedaction({
         </div>
       )}
       {actionError && <p role="alert">{actionError}</p>}
-      {(!media || !runs) && !loadError && <p>Loading…</p>}
+      {(!media || !runs) && !loadError && <p className="loading">Loading…</p>}
       {media?.length === 0 && <p>No photos yet.</p>}
 
       {media && runs && media.length > 0 && (

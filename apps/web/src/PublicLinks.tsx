@@ -68,7 +68,7 @@ export function AcceptInvite() {
         <p>Ask the person who invited you for a new link.</p>
       </section>
     );
-  if (!preview) return <p>Loading…</p>;
+  if (!preview) return <p className="loading">Loading…</p>;
 
   return (
     <form onSubmit={submit} aria-labelledby="invite-heading">

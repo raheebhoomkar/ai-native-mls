@@ -33,7 +33,11 @@ export function SystemStatus() {
   }, []);
 
   return (
-    <section aria-labelledby="status-heading">
+    <section
+      aria-labelledby="status-heading"
+      className="system-status"
+      data-health={health.state}
+    >
       <h2 id="status-heading">System status</h2>
       <dl aria-live="polite">
         <dt>API and database</dt>

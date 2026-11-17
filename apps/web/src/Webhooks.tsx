@@ -242,7 +242,7 @@ function Deliveries({
   }, [path, reloadKey]);
 
   if (error) return <p role="alert">{error}</p>;
-  if (!list) return <p>Loading…</p>;
+  if (!list) return <p className="loading">Loading…</p>;
   if (list.length === 0) return <p>{empty}</p>;
   return (
     <div className="table-scroll">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { HashRouter, Route, Routes } from "react-router";
 
 import { api, ApiError, describeError, type Me } from "./api";
@@ -6,7 +6,57 @@ import { LoginForm } from "./LoginForm";
 import { OfflineBanner } from "./Offline";
 import { AcceptInvite, ResetPassword } from "./PublicLinks";
 import { SystemStatus } from "./SystemStatus";
+import { Arches, Brand, BrandMark } from "./ui";
 import { Workspace } from "./Workspace";
+
+/** Sign-in and one-time link pages: an editorial panel beside a single card. */
+function AuthFrame({
+  lede = "Sign in to your brokerage or MLS workspace.",
+  children,
+}: {
+  lede?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="auth">
+      <div className="auth-aside">
+        <div className="brand">
+          <Brand sub="Multiple listing service" />
+        </div>
+        <div className="auth-statement">
+          <p>
+            Every property, presented with <em>intent</em>.
+          </p>
+          <p>
+            Listings, photographs, AI review and workflows for brokerages and
+            MLS teams, in one considered workspace.
+          </p>
+        </div>
+        <ul className="auth-facts">
+          <li>
+            <strong>AI-assisted</strong> photo reading and policy checks
+          </li>
+          <li>
+            <strong>Role-aware</strong> for agents, brokers and administrators
+          </li>
+          <li>
+            <strong>Networked</strong> listings shared across organisations
+          </li>
+        </ul>
+        <Arches />
+      </div>
+      <main id="content" tabIndex={-1} className="auth-main">
+        <div className="auth-card">
+          <h1>AI-Native MLS</h1>
+          <p className="lede">{lede}</p>
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+const LINK_LEDE = "Complete the step this one-time link was made for.";
 
 type Session =
   | { state: "loading" }
@@ -43,22 +93,31 @@ function Main() {
     };
   }, []);
 
-  if (session.state === "loading") return <p>Loading…</p>;
+  if (session.state === "loading")
+    return (
+      <main id="content" tabIndex={-1} className="splash">
+        <h1 className="visually-hidden">AI-Native MLS</h1>
+        <BrandMark />
+        <p className="loading">Loading…</p>
+      </main>
+    );
   if (session.state === "error")
     return (
-      <section>
-        <p role="alert">Could not load your session: {session.message}</p>
-        <button type="button" onClick={retry}>
-          Try again
-        </button>
-      </section>
+      <AuthFrame>
+        <section>
+          <p role="alert">Could not load your session: {session.message}</p>
+          <button type="button" onClick={retry}>
+            Try again
+          </button>
+        </section>
+      </AuthFrame>
     );
   if (session.state === "signed-out")
     return (
-      <>
+      <AuthFrame>
         <LoginForm onSignedIn={signedIn} />
         <SystemStatus />
-      </>
+      </AuthFrame>
     );
   return (
     <Workspace
@@ -86,14 +145,25 @@ export function App() {
         Skip to main content
       </a>
       <OfflineBanner />
-      <main id="content" tabIndex={-1}>
-        <h1>AI-Native MLS</h1>
-        <Routes>
-          <Route path="/accept-invite" element={<AcceptInvite />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<Main />} />
-        </Routes>
-      </main>
+      <Routes>
+        <Route
+          path="/accept-invite"
+          element={
+            <AuthFrame lede={LINK_LEDE}>
+              <AcceptInvite />
+            </AuthFrame>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <AuthFrame lede={LINK_LEDE}>
+              <ResetPassword />
+            </AuthFrame>
+          }
+        />
+        <Route path="*" element={<Main />} />
+      </Routes>
     </HashRouter>
   );
 }

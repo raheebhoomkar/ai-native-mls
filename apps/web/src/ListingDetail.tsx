@@ -19,6 +19,7 @@ import { ListingCollaboration } from "./ListingCollaboration";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
+import { Icon, initials, PlaceholderArt } from "./ui";
 
 type Status = Listing["status"];
 type StatusChange = components["schemas"]["StatusChangeOut"];
@@ -53,6 +54,53 @@ function transitionLabel(from: Status, to: Status): string {
 }
 
 const when = (iso: string) => new Date(iso).toLocaleString();
+
+/** Status changes that move a listing forward get the primary style; leaving the market is marked. */
+function transitionStyle(to: Status): string | undefined {
+  if (to === "active" || to === "pending_review") return "primary";
+  if (to === "withdrawn" || to === "expired") return "danger";
+  return undefined;
+}
+
+/** The listing's photos, large; decoration only, since the gallery below names each one. */
+function Hero({ media }: { media: Media[] | null }) {
+  if (media === null)
+    return (
+      <div className="listing-hero empty-hero skeleton" aria-hidden="true" />
+    );
+  const photos = media.filter((item) => item.thumbnail_url).slice(0, 5);
+  if (photos.length === 0)
+    return (
+      <div className="listing-hero empty-hero">
+        <PlaceholderArt>
+          <span>Photography to come</span>
+        </PlaceholderArt>
+      </div>
+    );
+  return (
+    <div className="listing-hero" data-count={photos.length}>
+      {photos.map((photo, index) => (
+        <div key={photo.id}>
+          <img src={index === 0 ? photo.url : photo.thumbnail_url!} alt="" />
+          {index === 0 && media.length > 1 && (
+            <button
+              type="button"
+              className="hero-more small"
+              onClick={() =>
+                document
+                  .getElementById("media-heading")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+            >
+              <Icon name="image" />
+              All {media.length} photos
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type Loaded =
   | { state: "loading" }
@@ -100,13 +148,16 @@ export function ListingDetail({
     };
   }, [id, organisation.id, reloads]);
 
-  if (loaded.state === "loading") return <p>Loading…</p>;
+  if (loaded.state === "loading") return <p className="loading">Loading…</p>;
   if (loaded.state === "missing")
     return (
-      <section>
+      <section className="empty">
+        <Icon name="grid" />
         <h2>Listing not found</h2>
         <p>It does not exist, or it is not shared with {organisation.name}.</p>
-        <Link to="/listings">Back to listings</Link>
+        <Link className="button-link" to="/listings">
+          Back to listings
+        </Link>
       </section>
     );
   if (loaded.state === "error")
@@ -183,235 +234,350 @@ export function ListingDetail({
     });
   }
 
+  const place = [address.locality, address.city].filter(Boolean).join(", ");
+  const canManage = listing.can_edit || listing.allowed_transitions.length > 0;
+
   return (
     <section aria-labelledby="listing-heading">
-      <p>
+      <p className="crumbs">
         <Link to="/listings">← Listings</Link>
       </p>
-      <h2 id="listing-heading">{listing.title}</h2>
-      <p>
-        <strong>{STATUS_LABELS[listing.status]}</strong>
-        {listing.archived_at && " · Archived"} ·{" "}
-        {listing.listing_type === "sale" ? "For sale" : "For rent"} ·{" "}
-        {formatMoney(listing.list_price)}
-      </p>
+      <Hero media={media} />
+
+      <header className="listing-header">
+        <div>
+          <p className="eyebrow">
+            {PROPERTY_TYPE_LABELS[property.property_type]}
+            {place && ` · ${place}`}
+          </p>
+          <h2 id="listing-heading">{listing.title}</h2>
+          <p className="listing-meta">
+            <strong className={`status-pill status-${listing.status}`}>
+              {STATUS_LABELS[listing.status]}
+            </strong>
+            {listing.archived_at && <span className="badge">Archived</span>}
+            <span>
+              {listing.listing_type === "sale" ? "For sale" : "For rent"}
+            </span>
+            <span>
+              {listing.visibility === "network"
+                ? "Shared on the network"
+                : "Private listing"}
+            </span>
+          </p>
+        </div>
+        <div className="listing-price">
+          <span className="price-label">List price</span>
+          <span className="price-value">{formatMoney(listing.list_price)}</span>
+        </div>
+      </header>
+
       {!isOwn && (
-        <p>
+        <p className="notice">
           Shared by {listing.organisation_name}. You can view this listing but
           not change it.
         </p>
       )}
 
-      <div className="detail-columns">
-        <dl>
-          <dt>Property</dt>
-          <dd>
+      <ul className="specs" aria-label="Key facts">
+        <li>
+          <span className="spec-value">
             {PROPERTY_TYPE_LABELS[property.property_type]}
-            {property.bedrooms != null && ` · ${property.bedrooms} bed`}
-            {property.bathrooms != null && ` · ${property.bathrooms} bath`}
-            {property.area &&
-              ` · ${property.area.value} ${property.area.unit === "sqft" ? "sq ft" : "sq m"}`}
-            {property.year_built != null && ` · built ${property.year_built}`}
-          </dd>
-          <dt>Address</dt>
-          <dd>
-            {[
-              address.line1,
-              address.line2,
-              address.locality,
-              address.city,
-              address.state,
-              address.postal_code,
-              address.country,
-            ]
-              .filter(Boolean)
-              .join(", ")}
-          </dd>
-          <dt>Listing agent</dt>
-          <dd>
-            {listing.listing_agent.full_name}, {listing.organisation_name}
-          </dd>
-          <dt>Visibility</dt>
-          <dd>
-            {listing.visibility === "network"
-              ? "Shared with other organisations while active, off market or sold"
-              : "Private to the listing organisation"}
-          </dd>
-          {listing.expires_on && (
-            <>
-              <dt>Expires on</dt>
-              <dd>{listing.expires_on}</dd>
-            </>
-          )}
-          {listing.listed_at && (
-            <>
-              <dt>First listed</dt>
-              <dd>{when(listing.listed_at)}</dd>
-            </>
-          )}
-          {listing.sold_price && (
-            <>
-              <dt>Sold price</dt>
+          </span>
+          <span className="spec-label">Property type</span>
+        </li>
+        {property.bedrooms != null && (
+          <li>
+            <span className="spec-value">{property.bedrooms}</span>
+            <span className="spec-label">Bedrooms</span>
+          </li>
+        )}
+        {property.bathrooms != null && (
+          <li>
+            <span className="spec-value">{property.bathrooms}</span>
+            <span className="spec-label">Bathrooms</span>
+          </li>
+        )}
+        {property.area && (
+          <li>
+            <span className="spec-value">
+              {Number(property.area.value).toLocaleString("en-IN")}
+            </span>
+            <span className="spec-label">
+              {property.area.unit === "sqft" ? "Square feet" : "Square metres"}
+            </span>
+          </li>
+        )}
+        {property.year_built != null && (
+          <li>
+            <span className="spec-value">{property.year_built}</span>
+            <span className="spec-label">Year built</span>
+          </li>
+        )}
+      </ul>
+
+      <div className="listing-body">
+        <div className="listing-main">
+          <section aria-labelledby="details-heading">
+            <h3 id="details-heading">Details</h3>
+            <dl className="details">
+              <dt>Property</dt>
               <dd>
-                {formatMoney(listing.sold_price)} (reported by the listing
-                agent, not verified)
+                {PROPERTY_TYPE_LABELS[property.property_type]}
+                {property.bedrooms != null && ` · ${property.bedrooms} bed`}
+                {property.bathrooms != null && ` · ${property.bathrooms} bath`}
+                {property.area &&
+                  ` · ${property.area.value} ${property.area.unit === "sqft" ? "sq ft" : "sq m"}`}
+                {property.year_built != null &&
+                  ` · built ${property.year_built}`}
               </dd>
-            </>
-          )}
-          <dt>Remarks</dt>
-          <dd className="remarks">{listing.remarks || "None"}</dd>
-          {isOwn && <ImportSourceDetails listingId={listing.id} />}
-        </dl>
-        <ListingSuggestions
-          listingId={listing.id}
-          canRequest={listing.can_edit && !listing.archived_at}
-        />
-      </div>
+              <dt>Address</dt>
+              <dd>
+                {[
+                  address.line1,
+                  address.line2,
+                  address.locality,
+                  address.city,
+                  address.state,
+                  address.postal_code,
+                  address.country,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+              </dd>
+              <dt>Listing agent</dt>
+              <dd>
+                {listing.listing_agent.full_name}, {listing.organisation_name}
+              </dd>
+              <dt>Visibility</dt>
+              <dd>
+                {listing.visibility === "network"
+                  ? "Shared with other organisations while active, off market or sold"
+                  : "Private to the listing organisation"}
+              </dd>
+              {listing.expires_on && (
+                <>
+                  <dt>Expires on</dt>
+                  <dd>{listing.expires_on}</dd>
+                </>
+              )}
+              {listing.listed_at && (
+                <>
+                  <dt>First listed</dt>
+                  <dd>{when(listing.listed_at)}</dd>
+                </>
+              )}
+              {listing.sold_price && (
+                <>
+                  <dt>Sold price</dt>
+                  <dd>
+                    {formatMoney(listing.sold_price)} (reported by the listing
+                    agent, not verified)
+                  </dd>
+                </>
+              )}
+              <dt>Remarks</dt>
+              <dd className="remarks">{listing.remarks || "None"}</dd>
+              {isOwn && <ImportSourceDetails listingId={listing.id} />}
+            </dl>
+          </section>
 
-      {conflict && (
-        <div className="notice" role="alert">
-          <p>Someone else changed this listing. Reload it, then try again.</p>
-          <button type="button" onClick={reload}>
-            Reload listing
-          </button>
-        </div>
-      )}
-      {error && <p role="alert">{error}</p>}
-
-      {(listing.can_edit || listing.allowed_transitions.length > 0) && (
-        <div className="actions">
-          {listing.can_edit && listing.status !== "sold" && (
-            <Link to={`/listings/${listing.id}/edit`}>Edit</Link>
-          )}
-          {listing.allowed_transitions.map((to) => (
-            <button
-              key={to}
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setTarget(to);
-                setConfirmArchive(false);
-              }}
-            >
-              {transitionLabel(listing.status, to)}
-            </button>
-          ))}
-          {listing.can_edit && !live && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setConfirmArchive(true);
-                setTarget(null);
-              }}
-            >
-              Archive
-            </button>
-          )}
-        </div>
-      )}
-
-      {target && (
-        <form onSubmit={confirmTransition} aria-label="Confirm status change">
-          <h3>{transitionLabel(listing.status, target)}</h3>
-          {target === "sold" && (
-            <>
-              <label htmlFor="sold-price">
-                Sold price ({listing.list_price.currency})
-              </label>
-              <input
-                id="sold-price"
-                type="number"
-                required
-                min="0.01"
-                step="0.01"
-                value={soldPrice}
-                onChange={(e) => setSoldPrice(e.target.value)}
-              />
-              <small>Marking as sold is final and cannot be undone.</small>
-            </>
-          )}
-          <label htmlFor="transition-reason">Reason (optional)</label>
-          <input
-            id="transition-reason"
-            maxLength={2000}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
+          <ListingMedia
+            listingId={listing.id}
+            canManage={listing.can_edit}
+            onLoaded={setMedia}
           />
-          <div className="actions">
-            <button type="submit" disabled={busy}>
-              Confirm
-            </button>
-            <button type="button" onClick={() => setTarget(null)}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+          <ListingLocation
+            key={`${property.id}:${reloads}`}
+            property={property}
+            title={listing.title}
+            isOwn={isOwn}
+            canEdit={listing.can_edit && !listing.archived_at}
+          />
+          <ListingRedaction
+            listingId={listing.id}
+            media={media}
+            canRequest={listing.can_edit && !listing.archived_at}
+          />
 
-      {confirmArchive && (
-        <div className="notice">
-          <p>
-            Archive this listing? It leaves the listing table and can no longer
-            be edited.
-          </p>
-          <div className="actions">
-            <button type="button" disabled={busy} onClick={archive}>
-              Confirm archive
-            </button>
-            <button type="button" onClick={() => setConfirmArchive(false)}>
-              Cancel
-            </button>
-          </div>
+          {isOwn && (
+            <ListingCompliance
+              listingId={listing.id}
+              listingVersion={listing.version}
+              canRequest={listing.can_edit && !listing.archived_at}
+            />
+          )}
+
+          {isOwn && (
+            <ListingWorkflow
+              listingId={listing.id}
+              canRequest={listing.can_edit && !listing.archived_at}
+            />
+          )}
+
+          {isOwn && <ListingValuation listingId={listing.id} />}
+
+          {isOwn && (
+            <ListingCollaboration
+              listingId={listing.id}
+              organisationId={organisation.id}
+              myUserId={myUserId}
+              canEdit={listing.can_edit && !listing.archived_at}
+              canWrite={organisation.my_permissions.includes("listing:write")}
+            />
+          )}
+
+          {isOwn && (
+            <section aria-labelledby="history-heading">
+              <History listingId={listing.id} version={listing.version} />
+            </section>
+          )}
         </div>
-      )}
 
-      <ListingLocation
-        key={`${property.id}:${reloads}`}
-        property={property}
-        title={listing.title}
-        isOwn={isOwn}
-        canEdit={listing.can_edit && !listing.archived_at}
-      />
-      <ListingMedia
-        listingId={listing.id}
-        canManage={listing.can_edit}
-        onLoaded={setMedia}
-      />
-      <ListingRedaction
-        listingId={listing.id}
-        media={media}
-        canRequest={listing.can_edit && !listing.archived_at}
-      />
+        <aside className="listing-aside" aria-label="Agent and actions">
+          <div className="panel agent-card">
+            <span className="eyebrow">Presented by</span>
+            <span className="avatar large" aria-hidden="true">
+              {initials(listing.listing_agent.full_name)}
+            </span>
+            <span className="agent-name">
+              {listing.listing_agent.full_name}
+            </span>
+            <span className="agent-org">{listing.organisation_name}</span>
+          </div>
 
-      {isOwn && (
-        <ListingCompliance
-          listingId={listing.id}
-          listingVersion={listing.version}
-          canRequest={listing.can_edit && !listing.archived_at}
-        />
-      )}
+          {(canManage || conflict || error) && (
+            <section className="manage" aria-labelledby="manage-heading">
+              <h3 id="manage-heading">Manage listing</h3>
+              {conflict && (
+                <div className="notice" role="alert">
+                  <p>
+                    Someone else changed this listing. Reload it, then try
+                    again.
+                  </p>
+                  <button type="button" onClick={reload}>
+                    Reload listing
+                  </button>
+                </div>
+              )}
+              {error && <p role="alert">{error}</p>}
 
-      {isOwn && (
-        <ListingWorkflow
-          listingId={listing.id}
-          canRequest={listing.can_edit && !listing.archived_at}
-        />
-      )}
+              {canManage && (
+                <div className="actions">
+                  {listing.can_edit && listing.status !== "sold" && (
+                    <Link
+                      className="button-link"
+                      to={`/listings/${listing.id}/edit`}
+                    >
+                      Edit
+                    </Link>
+                  )}
+                  {listing.allowed_transitions.map((to) => (
+                    <button
+                      key={to}
+                      type="button"
+                      className={transitionStyle(to)}
+                      disabled={busy}
+                      onClick={() => {
+                        setTarget(to);
+                        setConfirmArchive(false);
+                      }}
+                    >
+                      {transitionLabel(listing.status, to)}
+                    </button>
+                  ))}
+                  {listing.can_edit && !live && (
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={busy}
+                      onClick={() => {
+                        setConfirmArchive(true);
+                        setTarget(null);
+                      }}
+                    >
+                      Archive
+                    </button>
+                  )}
+                </div>
+              )}
 
-      {isOwn && <ListingValuation listingId={listing.id} />}
+              {target && (
+                <form
+                  onSubmit={confirmTransition}
+                  aria-label="Confirm status change"
+                >
+                  <h3>{transitionLabel(listing.status, target)}</h3>
+                  {target === "sold" && (
+                    <>
+                      <label htmlFor="sold-price">
+                        Sold price ({listing.list_price.currency})
+                      </label>
+                      <input
+                        id="sold-price"
+                        type="number"
+                        required
+                        min="0.01"
+                        step="0.01"
+                        value={soldPrice}
+                        onChange={(e) => setSoldPrice(e.target.value)}
+                      />
+                      <small>
+                        Marking as sold is final and cannot be undone.
+                      </small>
+                    </>
+                  )}
+                  <label htmlFor="transition-reason">Reason (optional)</label>
+                  <input
+                    id="transition-reason"
+                    maxLength={2000}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                  <div className="actions">
+                    <button type="submit" disabled={busy}>
+                      Confirm
+                    </button>
+                    <button type="button" onClick={() => setTarget(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
 
-      {isOwn && (
-        <ListingCollaboration
-          listingId={listing.id}
-          organisationId={organisation.id}
-          myUserId={myUserId}
-          canEdit={listing.can_edit && !listing.archived_at}
-          canWrite={organisation.my_permissions.includes("listing:write")}
-        />
-      )}
+              {confirmArchive && (
+                <div className="notice">
+                  <p>
+                    Archive this listing? It leaves the listing table and can no
+                    longer be edited.
+                  </p>
+                  <div className="actions">
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={busy}
+                      onClick={archive}
+                    >
+                      Confirm archive
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmArchive(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
-      {isOwn && <History listingId={listing.id} version={listing.version} />}
+          <ListingSuggestions
+            listingId={listing.id}
+            canRequest={listing.can_edit && !listing.archived_at}
+          />
+        </aside>
+      </div>
     </section>
   );
 }
@@ -430,7 +596,7 @@ function History({
   );
   return (
     <>
-      <h3>Status history</h3>
+      <h3 id="history-heading">Status history</h3>
       {history.error && <p role="alert">{history.error}</p>}
       <ol className="history">
         {history.items.map((change) => (

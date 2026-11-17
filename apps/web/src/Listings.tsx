@@ -1,9 +1,10 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type CSSProperties, type FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { type CurrentOrganisation, useList } from "./api";
 import type { components } from "./api-schema";
 import { type Bounds, MapView } from "./MapView";
+import { AiTag, Icon, PlaceholderArt } from "./ui";
 
 export type Listing = components["schemas"]["ListingOut"];
 type SearchHit = components["schemas"]["SearchHit"];
@@ -29,6 +30,105 @@ export function formatMoney(money: { amount: string; currency: string }) {
     }).format(Number(money.amount));
   } catch {
     return `${money.currency} ${money.amount}`; // unknown currency code
+  }
+}
+
+type Explanation = SearchHit["explanation"];
+
+const placeOf = (listing: Listing) =>
+  [listing.property.address.locality, listing.property.address.city]
+    .filter(Boolean)
+    .join(", ");
+
+/** "Score 0.43 · words: sea, facing · filters: min price" for a semantic search hit. */
+function matchText(explanation: Explanation, score: number | null) {
+  return (
+    `Score ${score?.toFixed(2)}` +
+    (explanation.matched_words.length > 0
+      ? ` · words: ${explanation.matched_words.join(", ")}`
+      : "") +
+    (explanation.filters.length > 0
+      ? ` · filters: ${explanation.filters.join(", ").replace(/_/g, " ")}`
+      : "")
+  );
+}
+
+/** One listing as a card: photo, price, title, place and key facts. The title link covers the card. */
+export function ListingCard({
+  listing,
+  index = 0,
+  explanation = null,
+  score = null,
+}: {
+  listing: Listing;
+  index?: number;
+  explanation?: Explanation | null;
+  score?: number | null;
+}) {
+  const property = listing.property;
+  return (
+    <li style={{ "--i": index } as CSSProperties}>
+      <article className="listing-card" aria-labelledby={`card-${listing.id}`}>
+        <div className="card-media">
+          {listing.cover_url ? (
+            <img src={listing.cover_url} alt="" loading="lazy" />
+          ) : (
+            <PlaceholderArt />
+          )}
+          <span className={`status-pill status-${listing.status}`}>
+            {STATUS_LABELS[listing.status]}
+          </span>
+          <span className="card-type">
+            {listing.listing_type === "sale" ? "For sale" : "For rent"}
+          </span>
+        </div>
+        <div className="card-body">
+          <p className="card-price">{formatMoney(listing.list_price)}</p>
+          <h3 className="card-title" id={`card-${listing.id}`}>
+            <Link to={`/listings/${listing.id}`}>{listing.title}</Link>
+          </h3>
+          <p className="card-location">{placeOf(listing)}</p>
+          <ul className="card-specs" aria-label="Key facts">
+            {property.bedrooms != null && (
+              <li>
+                <Icon name="bed" />
+                {property.bedrooms} bed
+              </li>
+            )}
+            {property.bathrooms != null && (
+              <li>
+                <Icon name="bath" />
+                {property.bathrooms} bath
+              </li>
+            )}
+            {property.area && (
+              <li>
+                <Icon name="area" />
+                {Number(property.area.value).toLocaleString("en-IN")}{" "}
+                {property.area.unit === "sqft" ? "sq ft" : "sq m"}
+              </li>
+            )}
+          </ul>
+          <p className="card-foot">
+            <span>{listing.listing_agent.full_name}</span>
+            <span>{listing.organisation_name}</span>
+          </p>
+          {explanation && (
+            <p className="card-match">{matchText(explanation, score)}</p>
+          )}
+        </div>
+      </article>
+    </li>
+  );
+}
+
+const VIEW_KEY = "mls.listingView";
+
+function rememberedView(): "grid" | "table" {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "table" ? "table" : "grid";
+  } catch {
+    return "grid"; // storage can be blocked; the grid is the default
   }
 }
 
@@ -85,6 +185,16 @@ export function Listings({
   const note = rows.find((row) => row.explanation?.note)?.explanation?.note;
 
   const [showMap, setShowMap] = useState(false);
+  const [view, setView] = useState(rememberedView);
+
+  function choose(next: "grid" | "table") {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // not remembered across visits; nothing else depends on it
+    }
+  }
   const points = useMemo(
     () =>
       rows.flatMap(({ listing }) => {
@@ -135,27 +245,48 @@ export function Listings({
     setApplied(EMPTY_FILTERS);
   }
 
+  const canWrite = organisation.my_permissions.includes("listing:write");
+
   return (
     <section aria-labelledby="listings-heading">
-      <h2 id="listings-heading">Listings</h2>
-      {organisation.my_permissions.includes("listing:write") && (
-        <p>
-          <Link to="/listings/new">New listing</Link> ·{" "}
-          <Link to="/listings/import">Import listings</Link>
-        </p>
-      )}
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Inventory</p>
+          <h2 id="listings-heading">Listings</h2>
+          <p className="lede">
+            Your organisation&apos;s listings and those shared across the
+            network.
+          </p>
+        </div>
+        {canWrite && (
+          <div className="page-actions">
+            <Link className="button-link" to="/listings/import">
+              <Icon name="upload" />
+              Import listings
+            </Link>
+            <Link className="button-link primary" to="/listings/new">
+              <Icon name="plus" />
+              New listing
+            </Link>
+          </div>
+        )}
+      </header>
 
       <form className="filters" onSubmit={search} aria-label="Filter listings">
-        <label className="describe">
-          Describe the home
+        <div className="describe">
+          <span className="label-row">
+            <label htmlFor="describe-home">Describe the home</label>
+            <AiTag>Semantic search</AiTag>
+          </span>
           <input
+            id="describe-home"
             type="search"
             placeholder="e.g. sea-facing flat with a balcony near the station"
             maxLength={500}
             value={draft.describe}
             onChange={(e) => set("describe")(e.target.value)}
           />
-        </label>
+        </div>
         <label>
           Search
           <input
@@ -237,24 +368,53 @@ export function Listings({
         </div>
       </form>
 
-      <p>
-        <button
-          type="button"
-          aria-pressed={showMap}
-          onClick={() => setShowMap((shown) => !shown)}
-        >
-          {showMap ? "Hide map" : "Show map"}
-        </button>
-        {inArea && (
-          <>
-            {" "}
-            Showing listings in the map area.{" "}
-            <button type="button" onClick={anyArea}>
-              Any area
+      <div className="results-bar">
+        <div>
+          {!listings.loading && !listings.error && (
+            <span>
+              {rows.length}
+              {listings.next ? "+" : ""}{" "}
+              {rows.length === 1 ? "listing" : "listings"}
+            </span>
+          )}
+          {inArea && (
+            <>
+              <span>Showing listings in the map area.</span>
+              <button type="button" className="small" onClick={anyArea}>
+                Any area
+              </button>
+            </>
+          )}
+        </div>
+        <div>
+          <div className="segmented" role="group" aria-label="Layout">
+            <button
+              type="button"
+              aria-pressed={view === "grid"}
+              onClick={() => choose("grid")}
+            >
+              <Icon name="grid" />
+              Grid
             </button>
-          </>
-        )}
-      </p>
+            <button
+              type="button"
+              aria-pressed={view === "table"}
+              onClick={() => choose("table")}
+            >
+              <Icon name="table" />
+              Table
+            </button>
+          </div>
+          <button
+            type="button"
+            aria-pressed={showMap}
+            onClick={() => setShowMap((shown) => !shown)}
+          >
+            <Icon name="map" />
+            {showMap ? "Hide map" : "Show map"}
+          </button>
+        </div>
+      </div>
       {showMap && (
         <>
           <MapView
@@ -270,10 +430,43 @@ export function Listings({
           )}
         </>
       )}
-      {listings.loading && <p>Loading…</p>}
+      {listings.loading && (
+        <>
+          <p className="visually-hidden" role="status">
+            Loading…
+          </p>
+          <ul className="listing-grid" aria-hidden="true">
+            {[0, 1, 2].map((n) => (
+              <li key={n} style={{ "--i": n } as CSSProperties}>
+                <div className="listing-card skeleton-card">
+                  <div className="card-media skeleton" />
+                  <div className="card-body">
+                    <span
+                      className="skeleton skeleton-line"
+                      style={{ width: "45%" }}
+                    />
+                    <span
+                      className="skeleton skeleton-line"
+                      style={{ width: "80%" }}
+                    />
+                    <span
+                      className="skeleton skeleton-line"
+                      style={{ width: "60%" }}
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {listings.error && <p role="alert">{listings.error}</p>}
       {!listings.loading && !listings.error && rows.length === 0 && (
-        <p>No listings match.</p>
+        <div className="empty">
+          <Icon name="grid" />
+          <p className="empty-title">No listings match.</p>
+          <p>Try fewer filters, or clear them to see everything.</p>
+        </div>
       )}
       {applied.describe && rows.length > 0 && (
         <p>
@@ -281,7 +474,20 @@ export function Listings({
           {note && <strong className="demo-note">{note}</strong>}
         </p>
       )}
-      {rows.length > 0 && (
+      {rows.length > 0 && view === "grid" && (
+        <ul className="listing-grid" aria-label="Listing results">
+          {rows.map(({ listing, explanation, score }, index) => (
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              index={index}
+              explanation={explanation}
+              score={score}
+            />
+          ))}
+        </ul>
+      )}
+      {rows.length > 0 && view === "table" && (
         <div className="table-scroll">
           <table>
             <thead>
@@ -299,34 +505,37 @@ export function Listings({
             </thead>
             <tbody>
               {rows.map(({ listing, explanation, score }) => {
-                const address = listing.property.address;
                 return (
                   <tr key={listing.id}>
                     <th scope="row">
-                      <Link to={`/listings/${listing.id}`}>
-                        {listing.title}
-                      </Link>
+                      <span className="row-title">
+                        {listing.cover_url ? (
+                          <img
+                            className="row-thumb"
+                            src={listing.cover_url}
+                            alt=""
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="row-thumb" aria-hidden="true" />
+                        )}
+                        <Link to={`/listings/${listing.id}`}>
+                          {listing.title}
+                        </Link>
+                      </span>
                     </th>
-                    <td>{STATUS_LABELS[listing.status]}</td>
+                    <td>
+                      <span className={`status-pill status-${listing.status}`}>
+                        {STATUS_LABELS[listing.status]}
+                      </span>
+                    </td>
                     <td>{formatMoney(listing.list_price)}</td>
                     <td>{listing.listing_type === "sale" ? "Sale" : "Rent"}</td>
-                    <td>
-                      {[address.locality, address.city]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </td>
+                    <td>{placeOf(listing)}</td>
                     <td>{listing.property.bedrooms ?? "—"}</td>
                     <td>{listing.listing_agent.full_name}</td>
                     <td>{listing.organisation_name}</td>
-                    {explanation && (
-                      <td>
-                        Score {score?.toFixed(2)}
-                        {explanation.matched_words.length > 0 &&
-                          ` · words: ${explanation.matched_words.join(", ")}`}
-                        {explanation.filters.length > 0 &&
-                          ` · filters: ${explanation.filters.join(", ").replace(/_/g, " ")}`}
-                      </td>
-                    )}
+                    {explanation && <td>{matchText(explanation, score)}</td>}
                   </tr>
                 );
               })}
@@ -335,9 +544,11 @@ export function Listings({
         </div>
       )}
       {listings.next && (
-        <button type="button" onClick={() => void listings.loadMore()}>
-          Load more
-        </button>
+        <div className="actions">
+          <button type="button" onClick={() => void listings.loadMore()}>
+            Load more
+          </button>
+        </div>
       )}
     </section>
   );

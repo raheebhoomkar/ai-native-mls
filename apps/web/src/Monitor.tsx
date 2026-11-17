@@ -93,7 +93,7 @@ export function Monitor({
         </label>
       </p>
       {error && <p role="alert">{error}</p>}
-      {!runs && !error && <p>Loading…</p>}
+      {!runs && !error && <p className="loading">Loading…</p>}
       {runs?.length === 0 && <p>No runs to show.</p>}
       {runs && runs.length > 0 && (
         <div className="table-scroll">

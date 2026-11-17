@@ -499,9 +499,12 @@ test("the phone menu opens and closes, and navigating moves focus to the page", 
   expect(menu.getAttribute("aria-expanded")).toBe("false");
   fireEvent.click(menu);
   expect(menu.getAttribute("aria-expanded")).toBe("true");
-  expect(screen.getByRole("navigation", { name: "Main" }).className).toBe(
-    "open",
-  );
+  expect(
+    screen
+      .getByRole("navigation", { name: "Main" })
+      .closest(".sidebar")
+      ?.classList.contains("open"),
+  ).toBe(true);
 
   fireEvent.click(screen.getByRole("link", { name: "Profile" }));
   await screen.findByRole("heading", { name: "Your profile" });

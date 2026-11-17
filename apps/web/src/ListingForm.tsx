@@ -305,48 +305,60 @@ export function NewListing({
       onSubmit={submit}
       aria-labelledby="new-listing-heading"
     >
-      <p>
+      <p className="crumbs">
         <Link to="/listings">← Listings</Link>
       </p>
-      <h2 id="new-listing-heading">New listing</h2>
-      <p>
-        The listing is created as a draft. Submit it for review from its page.
-      </p>
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Inventory</p>
+          <h2 id="new-listing-heading">New listing</h2>
+          <p className="lede">
+            The listing is created as a draft. Submit it for review from its
+            page.
+          </p>
+        </div>
+      </header>
 
-      <h3>Property</h3>
-      {properties.error && <p role="alert">{properties.error}</p>}
-      <Field label="Which property is this listing for?">
-        <select
-          value={propertyId}
-          disabled={createdPropertyId !== null}
-          onChange={(e) => setPropertyId(e.target.value)}
-        >
-          <option value="new">A new property</option>
-          {properties.items.map((item) => (
-            <option key={item.id} value={item.id}>
-              {propertyLabel(item)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      {propertyId === "new" && createdPropertyId === null && (
-        <PropertyFields form={property} onChange={setProperty} />
-      )}
-      {createdPropertyId !== null && (
-        <p role="status">
-          The property was saved. Fix the listing details and save again.
-        </p>
-      )}
+      <div className="form-section">
+        <h3>Property</h3>
+        {properties.error && <p role="alert">{properties.error}</p>}
+        <Field label="Which property is this listing for?">
+          <select
+            value={propertyId}
+            disabled={createdPropertyId !== null}
+            onChange={(e) => setPropertyId(e.target.value)}
+          >
+            <option value="new">A new property</option>
+            {properties.items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {propertyLabel(item)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {propertyId === "new" && createdPropertyId === null && (
+          <PropertyFields form={property} onChange={setProperty} />
+        )}
+        {createdPropertyId !== null && (
+          <p role="status">
+            The property was saved. Fix the listing details and save again.
+          </p>
+        )}
+      </div>
 
-      <h3>Listing</h3>
-      <ListingFields form={listing} onChange={setListing} />
+      <div className="form-section">
+        <h3>Listing</h3>
+        <ListingFields form={listing} onChange={setListing} />
+      </div>
 
       {save.error && <p role="alert">{save.error}</p>}
       <div className="actions">
         <button type="submit" disabled={save.busy}>
           {save.busy ? "Saving…" : "Create draft listing"}
         </button>
-        <Link to="/listings">Cancel</Link>
+        <Link className="button-link" to="/listings">
+          Cancel
+        </Link>
       </div>
     </form>
   );
@@ -411,7 +423,7 @@ export function EditListing({
         <Link to="/listings">Back to listings</Link>
       </section>
     );
-  if (!loaded) return <p>Loading…</p>;
+  if (!loaded) return <p className="loading">Loading…</p>;
   if (!loaded.can_edit || loaded.status === "sold")
     return (
       <section>
@@ -472,10 +484,15 @@ export function EditListing({
 
   return (
     <section aria-labelledby="edit-listing-heading">
-      <p>
+      <p className="crumbs">
         <Link to={`/listings/${loaded.id}`}>← Back to the listing</Link>
       </p>
-      <h2 id="edit-listing-heading">Edit listing</h2>
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Inventory</p>
+          <h2 id="edit-listing-heading">Edit listing</h2>
+        </div>
+      </header>
       {conflict && (
         <div className="notice" role="alert">
           <p>

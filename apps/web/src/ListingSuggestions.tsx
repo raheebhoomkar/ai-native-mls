@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { api, describeError } from "./api";
 import type { components } from "./api-schema";
 import { POLL_MS } from "./ListingMedia";
+import { AiTag, Confidence } from "./ui";
 
 type Run = components["schemas"]["AgentRunOut"];
 type Suggestion = components["schemas"]["Feature"];
@@ -93,7 +94,10 @@ export function ListingSuggestions({
 
   return (
     <section aria-labelledby="suggestions-heading" className="suggestions">
-      <h3 id="suggestions-heading">AI suggestions</h3>
+      <div className="panel-head">
+        <h3 id="suggestions-heading">AI suggestions</h3>
+        <AiTag>Photo analysis</AiTag>
+      </div>
       <p>
         <small>
           Read from the photos. Nothing is added to the listing until you accept
@@ -109,7 +113,7 @@ export function ListingSuggestions({
         </div>
       )}
       {actionError && <p role="alert">{actionError}</p>}
-      {!loaded && !loadError && <p>Loading…</p>}
+      {!loaded && !loadError && <p className="loading">Loading…</p>}
 
       {loaded && !run && <p>No analysis yet.</p>}
       {working && (
@@ -224,7 +228,7 @@ function SuggestionItem({
   return (
     <li>
       <strong>{label(feature.attribute)}:</strong> {feature.value}{" "}
-      <small>{Math.round(feature.confidence * 100)}% confident</small>
+      <Confidence value={feature.confidence} />
       {feature.uncertain && <span className="badge">Uncertain</span>}
       {isDemo && <span className="badge">Demo</span>}
       <br />

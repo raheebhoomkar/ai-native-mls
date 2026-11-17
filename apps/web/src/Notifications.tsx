@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router";
 
 import { api, describeError, useAction, type CurrentOrganisation } from "./api";
 import type { components } from "./api-schema";
+import { Icon } from "./ui";
 
 type Page = components["schemas"]["NotificationsOut"];
 
@@ -37,6 +38,7 @@ export function NotificationsLink({
 
   return (
     <NavLink to="/notifications">
+      <Icon name="bell" />
       Notifications
       {unread > 0 && (
         <>
@@ -116,12 +118,18 @@ export function Notifications({
           )}
         </p>
       )}
-      {page?.items.length === 0 && <p>Nothing yet.</p>}
+      {page?.items.length === 0 && (
+        <div className="empty">
+          <Icon name="bell" />
+          <p>Nothing yet.</p>
+        </div>
+      )}
       {page && page.items.length > 0 && (
         <ul aria-label="Notifications">
           {page.items.map((n) => (
             <li key={n.id}>
-              {n.read_at ? n.title : <strong>{n.title}</strong>}{" "}
+              {n.read_at ? n.title : <strong>{n.title}</strong>}
+              {!n.read_at && <span className="badge">New</span>}{" "}
               <small>{new Date(n.created_at).toLocaleString("en-IN")}</small>
               {n.body && <p>{n.body}</p>}
               <p>

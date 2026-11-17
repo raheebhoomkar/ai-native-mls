@@ -182,6 +182,10 @@ class ListingOut(BaseModel):
     distance_km: float | None = Field(
         default=None, description="From near_lat, near_lon, in km to 2 decimals; only then."
     )
+    cover_url: str | None = Field(
+        default=None,
+        description="Signed, short-lived thumbnail of the first photo; null when none is ready.",
+    )
     version: int
     created_at: datetime
     updated_at: datetime

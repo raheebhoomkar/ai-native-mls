@@ -92,7 +92,7 @@ export function Audit({ organisation }: { organisation: CurrentOrganisation }) {
       </div>
       {events.error && <p role="alert">{events.error}</p>}
       {events.loading ? (
-        <p>Loading…</p>
+        <p className="loading">Loading…</p>
       ) : events.items.length === 0 ? (
         !events.error && <p>No events match.</p>
       ) : (

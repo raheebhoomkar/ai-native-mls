@@ -41,6 +41,9 @@ test("agent signs in, creates a listing, finds it, submits it, and cleans up", a
   await page.getByRole("link", { name: "← Listings" }).click();
   await page.getByLabel("Search").fill(title);
   await page.getByRole("button", { name: "Search" }).click();
+  // The grid shows one card; the table view shows the same result as a row.
+  await expect(page.locator(".listing-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Table" }).click();
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Testville");

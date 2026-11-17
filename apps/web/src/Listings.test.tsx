@@ -93,7 +93,9 @@ test("shows listings with formatted price, status and location", async () => {
   }));
   render(<App />);
 
-  const row = (await screen.findByText("Lake-view apartment")).closest("tr")!;
+  const row = (await screen.findByText("Lake-view apartment")).closest(
+    "article",
+  )!;
   expect(row.textContent).toContain("Pending review");
   expect(row.textContent).toContain("Powai, Mumbai");
   expect(row.textContent).toContain("Asha Agent");
@@ -172,7 +174,7 @@ test("describing the home runs a ranked search and explains each match", async (
   });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-  const row = (await screen.findByText("Sea-facing flat")).closest("tr")!;
+  const row = (await screen.findByText("Sea-facing flat")).closest("article")!;
   expect(row.textContent).toContain("Score 0.43");
   expect(row.textContent).toContain("words: sea, facing");
   expect(row.textContent).toContain("filters: min price");

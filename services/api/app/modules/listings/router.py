@@ -37,6 +37,7 @@ from app.modules.listings.schemas import (
     StatusChangeOut,
     TransitionRequest,
 )
+from app.modules.media import service as media
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext, require
 from app.modules.search import service as search
@@ -118,6 +119,7 @@ def _listings_out(
     properties = service.get_properties(session, [item.property_id for item in listings])
     agents = auth.get_users(session, [item.listing_agent_user_id for item in listings])
     names = organisations.get_names(session, [item.organisation_id for item in listings])
+    covers = media.cover_thumbnails(session, [item.id for item in listings])
     return [
         ListingOut(
             id=item.id,
@@ -145,6 +147,7 @@ def _listings_out(
             allowed_transitions=service.allowed_transitions(ctx, item),
             can_edit=service.can_edit(ctx, item) and item.archived_at is None,
             distance_km=_distance(properties[item.property_id], near),
+            cover_url=media.signed_url(covers[item.id]) if item.id in covers else None,
             version=item.version,
             created_at=item.created_at,
             updated_at=item.updated_at,

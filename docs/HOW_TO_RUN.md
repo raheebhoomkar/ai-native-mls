@@ -31,6 +31,7 @@ All 23 sprints of the plan (S0 to S22, Phases A to D) are done. Per-sprint notes
 | Dashboard, audit log, app shell | Home page overview that matches your role; audit log with filters; Platform page lists organisations; phone menu, skip link, offline banner; install as an app (production build) | `s20-ux-admin.md` |
 | Hosting and handover | Deploy to Vercel (web on the CDN, API as a container, jobs through a protected job-runner URL); demo script, architecture, workflow and data diagrams, limits and roadmap, handover checklist | `s22-handover.md` |
 | Operations | Service health on the Platform page (jobs, webhooks, AI failures, alerts); failed webhook deliveries across all webhooks; daily cleanup; backup, restore and restore check; load smoke test; dependency scanning in CI. Runbooks: `docs/operations/runbooks.md` | `s21-hardening.md` |
+| Editorial Luxury design | Whole app restyled (ivory, espresso and bronze, serif headings): sidebar navigation that folds into a drawer on phones, image-led listing grid with a table view, listing pages with a photo hero, specifications and agent card, AI tags and confidence meters on AI output, subtle animations | `s23-editorial-redesign.md` |
 
 ## 1. Prerequisites
 
@@ -351,7 +352,7 @@ The audit log is also on the Audit page (section 6.15). Filters: `action` (prefi
 
 ### 6.14 Phone width
 
-In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column. The navigation folds behind a "Menu" button; choosing a page closes it.
+In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column. The navigation folds behind a "Menu" button and slides in from the left; choosing a page, or tapping outside it, closes it.
 
 ### 6.15 Dashboard, audit log and app shell
 
@@ -360,7 +361,7 @@ In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideway
 3. Audit: choose Area "Listings", then a Person. Only their listing events remain. Paste a listing ID into "Record ID" to see everything about that listing. Sign-in events belong to no organisation, so they are not listed here.
 4. Sign in as `platform.admin@demo.example.com` and open Platform. The Organisations table lists every organisation; "Work in it" switches to one and shows its Home.
 5. Keyboard: reload the page and press Tab. "Skip to main content" appears top left; Enter moves focus past the navigation. Every control can be reached with Tab and shows a focus outline.
-6. Offline: in DevTools, Network, choose "Offline". A yellow banner says you are offline, and actions fail with "You are offline. Try again when the connection is back." Switch back to "No throttling": the banner goes.
+6. Offline: in DevTools, Network, choose "Offline". A dark banner says you are offline, and actions fail with "You are offline. Try again when the connection is back." Switch back to "No throttling": the banner goes.
 7. Install (production build only, see "Running the production image locally"): Chrome's address bar should offer "Install" (not yet checked by hand). After one visit, the app opens with the network off and says it is offline.
 
 ### 6.16 Operations (worker must be running)
@@ -376,6 +377,15 @@ In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideway
 2. As `sunrise.agent@demo.example.com`, upload a photo. It stays "Processing".
 3. `curl -s http://localhost:8000/api/v1/ops/run-jobs` gives 401 `invalid_cron_secret`. With the secret: `curl -s -H "Authorization: Bearer local-cron-secret-123" http://localhost:8000/api/v1/ops/run-jobs` gives `{"ran":<n>}` and the thumbnail appears on the next refresh.
 4. Remove `CRON_SECRET` from `.env` and restart: the route answers 404. Start the worker again.
+
+### 6.18 Editorial design
+
+1. Sign-in page: a dark panel with the product statement and a line drawing beside the sign-in card. On a phone the panel shrinks to a band above the card.
+2. Sign in as `sunrise.agent@demo.example.com`. A sidebar on the left holds the organisation, the pages this role may open (grouped Workspace, Administration, Account) and the person with "Sign out". Home greets you by first name and shows the overview tiles, a "Needs your attention" list built from the numbers, the latest listings as cards and recent notifications.
+3. Listings: cards with the first photo (or a line drawing when a listing has none), status, price, place and key facts. "Grid" and "Table" switch the layout; the choice is remembered in this browser. "Describe the home" carries a "Semantic search" tag.
+4. Open "[Demo] 2 BHK to let near the IT park". The photos fill a hero at the top; "All 2 photos" scrolls to the gallery. Below: title, status, list price, a row of specifications, details on the left, and the agent card, "Manage listing" and "AI suggestions" on the right (above the details on narrow screens). AI panels show a bronze tag; suggestions and policy findings show a confidence meter beside the percentage.
+5. Motion: pages fade up on navigation, cards lift on hover, photos zoom slowly. With the system setting "Reduce motion" on, these stop.
+6. API: every listing in `GET /api/v1/listings` and `GET /api/v1/listings/{id}` has `cover_url`, a signed, short-lived link to the thumbnail of its first photo, or `null`.
 
 ## AI with a real key
 

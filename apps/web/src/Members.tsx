@@ -58,7 +58,7 @@ export function Members({
   return (
     <section aria-labelledby="members-heading">
       <h2 id="members-heading">Members of {organisation.name}</h2>
-      {members.loading && <p>Loading…</p>}
+      {members.loading && <p className="loading">Loading…</p>}
       {members.error && <p role="alert">{members.error}</p>}
       {change.error && <p role="alert">{change.error}</p>}
       {!members.loading && !members.error && (

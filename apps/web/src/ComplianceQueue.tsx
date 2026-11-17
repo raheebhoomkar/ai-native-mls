@@ -40,7 +40,7 @@ export function ComplianceQueue({
         not a legal judgement.
       </p>
       {error && <p role="alert">{error}</p>}
-      {!items && !error && <p>Loading…</p>}
+      {!items && !error && <p className="loading">Loading…</p>}
       {items?.length === 0 && <p>Nothing is waiting for review.</p>}
       {items && items.length > 0 && (
         <ol className="finding-list">

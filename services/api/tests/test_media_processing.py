@@ -68,6 +68,29 @@ def test_thumbnail_is_made_as_a_separate_asset_and_original_is_untouched(
     assert sorted(row.kind for row in rows) == ["original", "thumbnail"]
 
 
+def test_listing_cover_is_the_first_photo_with_a_thumbnail(
+    db: Session, brokerage: Brokerage, client: TestClient
+) -> None:
+    _, _, clients = brokerage
+    agent = clients["agent"]
+    listing = new_listing(agent)
+    assert agent.get(f"{LISTINGS}/{listing['id']}").json()["cover_url"] is None
+
+    upload(agent, listing["id"], image_bytes("JPEG"), "image/jpeg")
+    upload(agent, listing["id"], image_bytes("PNG"), "image/png")
+    run_jobs(db)
+
+    first, second = media(agent, listing)
+    cover = agent.get(f"{LISTINGS}/{listing['id']}").json()["cover_url"]
+    assert client.get(cover).content == client.get(first["thumbnail_url"]).content
+    [row] = [r for r in agent.get(LISTINGS).json()["items"] if r["id"] == listing["id"]]
+    assert row["cover_url"] is not None
+
+    agent.delete(f"/api/v1/media/{first['id']}")
+    cover = agent.get(f"{LISTINGS}/{listing['id']}").json()["cover_url"]
+    assert client.get(cover).content == client.get(second["thumbnail_url"]).content
+
+
 def test_transparent_png_gets_a_white_background(
     db: Session, brokerage: Brokerage, client: TestClient
 ) -> None:

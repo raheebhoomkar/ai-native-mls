@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api, describeError } from "./api";
 import type { components } from "./api-schema";
 import { POLL_MS } from "./ListingMedia";
+import { AiTag } from "./ui";
 
 type Scan = components["schemas"]["ComplianceScanOut"];
 type Finding = components["schemas"]["ComplianceFinding"];
@@ -84,7 +85,15 @@ export function FindingFacts({ finding }: { finding: Finding }) {
           {SEVERITY_TEXT[finding.severity]} severity
         </span>
         <br />
-        <small>
+        <small className="confidence">
+          <span
+            className={finding.confidence < 0.6 ? "meter low" : "meter"}
+            aria-hidden="true"
+          >
+            <span
+              style={{ width: `${Math.round(finding.confidence * 100)}%` }}
+            />
+          </span>
           Rule {finding.rule_id}, {FIELD_TEXT[finding.field]},{" "}
           {finding.source === "rule" ? "word rule" : "AI check"},{" "}
           {Math.round(finding.confidence * 100)}% confidence
@@ -160,7 +169,10 @@ export function ListingCompliance({
 
   return (
     <section aria-labelledby="compliance-heading" id="policy-check">
-      <h3 id="compliance-heading">Policy check</h3>
+      <div className="panel-head">
+        <h3 id="compliance-heading">Policy check</h3>
+        <AiTag>AI + rules</AiTag>
+      </div>
       <p>
         <small>
           Checks the title and remarks for phrases that may break the listing
@@ -178,7 +190,7 @@ export function ListingCompliance({
         </div>
       )}
       {actionError && <p role="alert">{actionError}</p>}
-      {!scans && !loadError && <p>Loading…</p>}
+      {!scans && !loadError && <p className="loading">Loading…</p>}
       {scans && !scan && <p>Not checked yet.</p>}
       {working && (
         <p role="status">

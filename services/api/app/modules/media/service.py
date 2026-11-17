@@ -15,7 +15,7 @@ from uuid import UUID, uuid4
 
 from PIL import Image, ImageOps
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.config import get_settings
 from app.core.errors import AppError
@@ -183,6 +183,24 @@ def thumbnails_for(session: Session, originals: Sequence[MediaAsset]) -> dict[UU
         )
     ).all()
     return {row.original_id: row for row in rows if row.original_id is not None}
+
+
+def cover_thumbnails(session: Session, listing_ids: Sequence[UUID]) -> dict[UUID, UUID]:
+    """Thumbnail id of each listing's first photo that has one, keyed by listing id."""
+    original = aliased(MediaAsset)
+    rows = session.execute(
+        select(MediaAsset.listing_id, MediaAsset.id)
+        .join(original, MediaAsset.original_id == original.id)
+        .where(
+            MediaAsset.listing_id.in_(listing_ids),
+            MediaAsset.kind == "thumbnail",
+            MediaAsset.deleted_at.is_(None),
+            original.deleted_at.is_(None),
+        )
+        # Newest first, so the oldest photo of each listing is written last and wins.
+        .order_by(original.created_at.desc(), original.id.desc())
+    ).all()
+    return {listing_id: thumbnail_id for listing_id, thumbnail_id in rows}
 
 
 def get_manageable(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:

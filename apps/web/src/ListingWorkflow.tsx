@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api, describeError } from "./api";
 import type { components } from "./api-schema";
 import { POLL_MS } from "./ListingMedia";
+import { AiTag } from "./ui";
 
 type Run = components["schemas"]["WorkflowRunOut"];
 type Step = components["schemas"]["StepOut"];
@@ -88,7 +89,10 @@ export function ListingWorkflow({
 
   return (
     <section aria-labelledby="workflow-heading">
-      <h3 id="workflow-heading">Workflow</h3>
+      <div className="panel-head">
+        <h3 id="workflow-heading">Workflow</h3>
+        <AiTag>AI pipeline</AiTag>
+      </div>
       <p>
         <small>
           Runs every step for this listing in order: locate the address, read

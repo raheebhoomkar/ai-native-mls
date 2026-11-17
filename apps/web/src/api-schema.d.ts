@@ -2811,6 +2811,11 @@ export interface components {
              * @description From near_lat, near_lon, in km to 2 decimals; only then.
              */
             distance_km?: number | null;
+            /**
+             * Cover Url
+             * @description Signed, short-lived thumbnail of the first photo; null when none is ready.
+             */
+            cover_url?: string | null;
             /** Version */
             version: number;
             /**

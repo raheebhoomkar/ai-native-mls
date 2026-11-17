@@ -141,10 +141,10 @@ test.describe("phone", () => {
     await expect(nav).toBeVisible();
     await nav.getByRole("link", { name: "Listings" }).click();
     await expect(nav).toBeHidden();
-    await expect(page.locator("tbody tr").first()).toBeVisible();
+    await expect(page.locator(".listing-card").first()).toBeVisible();
     await expectNoPageOverflow(page);
 
-    await page.locator("tbody tr a").first().click();
+    await page.locator(".listing-card a").first().click();
     await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
     await expectNoPageOverflow(page);
 

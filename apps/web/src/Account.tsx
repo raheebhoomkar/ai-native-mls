@@ -161,7 +161,7 @@ export function PlatformAdmin({
 
       <h3 id="orgs-heading">Organisations</h3>
       {organisations === null ? (
-        <p>Loading…</p>
+        <p className="loading">Loading…</p>
       ) : organisations.length === 0 ? (
         <p>No organisations yet. Create one below.</p>
       ) : (
