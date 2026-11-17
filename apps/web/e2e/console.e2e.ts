@@ -39,11 +39,29 @@ test("administrator reads the dashboard and filters the audit log", async ({
   await expect(page.getByRole("heading", { name: "Audit log" })).toBeVisible();
   await expect(page.locator("tbody tr").first()).toBeVisible();
 
-  await page.getByLabel("Area").selectOption("listing.");
+  // Filter by an area that has events. A fresh database may have no listing events yet,
+  // since other test files create them in parallel.
   const actions = page.locator("tbody tr td:nth-child(3)");
-  await expect(actions.first()).toHaveText(/^listing\./);
-  for (const text of await actions.allTextContents())
-    expect(text).toMatch(/^listing\./);
+  const areas = await page
+    .getByLabel("Area")
+    .locator("option")
+    .evaluateAll((options) =>
+      options.map((o) => (o as HTMLOptionElement).value).filter(Boolean),
+    );
+  const shown = await actions.allTextContents();
+  const area = areas.find((a) => shown.some((text) => text.startsWith(a)))!;
+  expect(area).toBeTruthy();
+  const byArea = page.waitForResponse((r) =>
+    r.url().includes(`action=${encodeURIComponent(area)}`),
+  );
+  await page.getByLabel("Area").selectOption(area);
+  await byArea;
+  await expect(actions.first()).toBeVisible();
+  await expect
+    .poll(async () =>
+      (await actions.allTextContents()).every((text) => text.startsWith(area)),
+    )
+    .toBe(true);
 
   // Choose the first person in the list; every row shown is then by them, or none are.
   await page.getByLabel("Area").selectOption("");
