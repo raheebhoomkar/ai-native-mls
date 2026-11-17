@@ -27,6 +27,7 @@ Sprints 0 to 20 of the plan are done (Phases A, B and C, and S20 of Phase D). Pe
 | Webhooks | Send signed events (listing changed, property changed, workflow finished) to another system; see each delivery, send again | `s18-webhooks.md` |
 | Team and notifications | Assign a listing to a teammate, comment or keep private notes, see the listing's activity; notifications with preferences; see both versions when someone saved first | `s19-collaboration.md` |
 | Dashboard, audit log, app shell | Home page overview that matches your role; audit log with filters; Platform page lists organisations; phone menu, skip link, offline banner; install as an app (production build) | `s20-ux-admin.md` |
+| Operations | Service health on the Platform page (jobs, webhooks, AI failures, alerts); failed webhook deliveries across all webhooks; daily cleanup; backup, restore and restore check; load smoke test; dependency scanning in CI. Runbooks: `docs/operations/runbooks.md` | `s21-hardening.md` |
 
 ## 1. Prerequisites
 
@@ -131,7 +132,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17 (end of S20): API 336 passed, 3 deselected (the deselected ones are live Gemini tests); web 86 passed; Playwright 9 passed and 1 skipped against the dev server, 10 passed against the production build. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17 (end of S21): API 341 passed, 3 deselected (the deselected ones are live Gemini tests); web 90 passed; Playwright 9 passed and 1 skipped against the dev server, 10 passed against the production build. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
@@ -149,7 +150,16 @@ cd apps/web && pnpm build && cd ../../services/api \
 cd apps/web && E2E_BASE_URL=http://localhost:8001 pnpm e2e   # in another terminal
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same API and web checks on pull requests.
+CI (`.github/workflows/ci.yml`) runs the same API and web checks on pull requests, plus a dependency audit (`pip-audit`, `pnpm audit --prod`) and a backup-and-restore check after the browser journeys.
+
+Operations checks (Postgres running; the second needs the API on port 8000 and the seed):
+
+```bash
+DATABASE_URL=postgresql://mls:mls@localhost:5432/mls scripts/backup_restore_check.sh
+python3 scripts/load_smoke.py --email sunrise.agent@demo.example.com --password local-dev-password
+```
+
+Expected: "Restore check passed: <n> tables, same row counts." and a summary line with 0 errors. Details and the restore procedure: `docs/operations/runbooks.md`.
 
 ## 6. Manual test walkthrough
 
@@ -347,6 +357,13 @@ In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideway
 5. Keyboard: reload the page and press Tab. "Skip to main content" appears top left; Enter moves focus past the navigation. Every control can be reached with Tab and shows a focus outline.
 6. Offline: in DevTools, Network, choose "Offline". A yellow banner says you are offline, and actions fail with "You are offline. Try again when the connection is back." Switch back to "No throttling": the banner goes.
 7. Install (production build only, see "Running the production image locally"): Chrome's address bar should offer "Install" (not yet checked by hand). After one visit, the app opens with the network off and says it is offline.
+
+### 6.16 Operations (worker must be running)
+
+1. Sign in as `platform.admin@demo.example.com` and open Platform. "Service health" lists anything that needs attention (or "No problems found.") and the numbers for background jobs, webhook deliveries and AI extraction. "Check again" reloads them.
+2. Stop the worker, then upload a photo as `sunrise.agent@demo.example.com`. After 5 minutes, "Check again" on the Platform page shows "Background jobs waiting over 5 minutes". Start the worker: the alert goes once the job has run.
+3. Webhooks dead letters: follow 6.12c up to step 5 and let all 6 attempts fail (about 15 minutes). As `sunrise.admin@demo.example.com`, the Webhooks page's "Failed deliveries" table lists it with the webhook URL. Start the receiver and click "Send again": it is delivered.
+4. Worker log: at most once a day (checked when the worker starts and every hour), it logs "Cleanup finished" with the number of rows deleted.
 
 ## AI with a real key
 

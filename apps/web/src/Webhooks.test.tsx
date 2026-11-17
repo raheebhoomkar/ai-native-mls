@@ -34,12 +34,32 @@ const delivery = {
   delivered_at: null,
 };
 
+function stubFetch(routes: Record<string, unknown[]>, calls: string[]) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const key = `${init?.method ?? "GET"} ${url.replace("/api/v1", "")}`;
+      calls.push(key);
+      const queue = routes[key];
+      if (!queue) throw new Error(`Unexpected request: ${key}`);
+      const next = queue.length > 1 ? queue.shift() : queue[0];
+      return Response.json(next);
+    }),
+  );
+}
+
+const ORGANISATION = {
+  id: "o1",
+  name: "Sunrise Realty",
+} as unknown as CurrentOrganisation;
+
 test("adds a webhook, shows the secret once, and resends a failed delivery", async () => {
   const calls: string[] = [];
   const routes: Record<string, unknown[]> = {
     "GET /webhooks": [[], [hook]],
     "POST /webhooks": [{ ...hook, secret: "whsec_abc" }],
     "GET /webhooks/h1/deliveries": [[delivery]],
+    "GET /webhooks/deliveries/failed": [[]],
     "POST /webhooks/deliveries/d1/redeliver": [
       { ...delivery, status: "pending" },
     ],
@@ -81,4 +101,37 @@ test("adds a webhook, shows the secret once, and resends a failed delivery", asy
   await vi.waitFor(() =>
     expect(calls).toContain("POST /webhooks/deliveries/d1/redeliver"),
   );
+});
+
+test("lists failed deliveries across webhooks and sends one again", async () => {
+  const calls: string[] = [];
+  stubFetch(
+    {
+      "GET /webhooks": [[hook]],
+      "GET /webhooks/deliveries/failed": [[delivery]],
+      "POST /webhooks/deliveries/d1/redeliver": [
+        { ...delivery, status: "pending" },
+      ],
+    },
+    calls,
+  );
+  render(<Webhooks organisation={ORGANISATION} />);
+  const table = await screen.findByRole("table", {
+    name: "Failed deliveries, newest first",
+  });
+  expect(table.textContent).toContain(hook.url);
+  expect(table.textContent).toContain("The endpoint answered HTTP 500.");
+  fireEvent.click(screen.getByRole("button", { name: "Send again" }));
+  await vi.waitFor(() =>
+    expect(calls).toContain("POST /webhooks/deliveries/d1/redeliver"),
+  );
+});
+
+test("says when no delivery has failed", async () => {
+  stubFetch(
+    { "GET /webhooks": [[hook]], "GET /webhooks/deliveries/failed": [[]] },
+    [],
+  );
+  render(<Webhooks organisation={ORGANISATION} />);
+  expect(await screen.findByText("No failed deliveries.")).toBeTruthy();
 });

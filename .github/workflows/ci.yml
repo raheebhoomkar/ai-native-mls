@@ -67,6 +67,25 @@ jobs:
       - run: pnpm run test
       - run: pnpm run build
 
+  # Known vulnerabilities in the installed Python packages and the web app's runtime packages.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.15"
+          cache: pip
+          cache-dependency-path: services/api/pyproject.toml
+      - run: pip install -e ".[dev]" pip-audit
+        working-directory: services/api
+      - run: pip-audit --skip-editable
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+      - run: pnpm audit --prod
+        working-directory: apps/web
+
   # Builds the image that is deployed, runs it with seeded demo data, and drives it in a browser.
   e2e:
     runs-on: ubuntu-latest
@@ -121,6 +140,12 @@ jobs:
           exit 1
       - run: pnpm e2e
         working-directory: apps/web
+      # Backs up the database the journeys just used, restores it elsewhere, compares rows.
+      - name: Backup and restore check
+        env:
+          DATABASE_URL: postgresql://mls:mls@localhost:5432/mls
+          PG_RUN: docker run --rm -i --network host postgres:17
+        run: scripts/backup_restore_check.sh
       - name: App logs
         if: failure()
         run: docker logs app

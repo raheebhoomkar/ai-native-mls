@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -96,6 +96,14 @@ def list_runs(session: Session, ctx: TenantContext, listing_id: UUID) -> Sequenc
 
 
 # --- Background job ------------------------------------------------------------------------
+
+
+def failures_since(session: Session, since: datetime) -> tuple[int, str | None]:
+    """Platform-wide count of failed extraction runs since `since`, and the newest error."""
+    failed = select(AgentRun).where(AgentRun.status == "failed", AgentRun.finished_at >= since)
+    count = session.scalar(select(func.count()).select_from(failed.subquery())) or 0
+    newest = session.scalars(failed.order_by(AgentRun.finished_at.desc()).limit(1)).first()
+    return count, newest.error if newest else None
 
 
 def _fail_run(run: AgentRun, error: str) -> None:

@@ -24,6 +24,7 @@ from app.modules.imports.router import imports_router, listing_import_router
 from app.modules.jobs.router import router as jobs_router
 from app.modules.listings.router import listings_router, properties_router
 from app.modules.media.router import listing_media_router, media_router
+from app.modules.ops.router import router as ops_router
 from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
 from app.modules.outbox import models as _outbox_models  # noqa: F401  # no routes; registers the table
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     v1.include_router(invitations_router)
     v1.include_router(audit_router)
     v1.include_router(dashboard_router)
+    v1.include_router(ops_router)
     v1.include_router(properties_router)
     v1.include_router(listings_router)
     v1.include_router(listing_media_router)

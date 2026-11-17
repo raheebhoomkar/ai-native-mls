@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 
 import { api, type Me, type Organisation, tokenLink, useAction } from "./api";
 import { OneTimeLink } from "./OneTimeLink";
+import { OpsStatus } from "./OpsStatus";
 
 export function Profile({
   me,
@@ -155,6 +156,8 @@ export function PlatformAdmin({
   return (
     <section aria-labelledby="admin-heading">
       <h2 id="admin-heading">Platform administration</h2>
+
+      <OpsStatus />
 
       <h3 id="orgs-heading">Organisations</h3>
       {organisations === null ? (

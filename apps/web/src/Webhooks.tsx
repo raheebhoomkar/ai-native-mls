@@ -169,7 +169,9 @@ export function Webhooks({
               </p>
               {open === hook.id && (
                 <Deliveries
-                  hookId={hook.id}
+                  path={`/webhooks/${hook.id}/deliveries`}
+                  caption="Deliveries, newest first"
+                  empty="No deliveries yet."
                   reloadKey={reloadKey}
                   onRedeliver={(id) =>
                     post(`/webhooks/deliveries/${id}/redeliver`)
@@ -181,17 +183,43 @@ export function Webhooks({
           ))}
         </ul>
       )}
+
+      {hooks && hooks.length > 0 && (
+        <>
+          <h3>Failed deliveries</h3>
+          <p>
+            Deliveries that failed all their attempts, across every webhook. Fix
+            the endpoint, then send them again.
+          </p>
+          <Deliveries
+            path="/webhooks/deliveries/failed"
+            caption="Failed deliveries, newest first"
+            empty="No failed deliveries."
+            urls={Object.fromEntries(hooks.map((h) => [h.id, h.url]))}
+            reloadKey={reloadKey}
+            onRedeliver={(id) => post(`/webhooks/deliveries/${id}/redeliver`)}
+            busy={action.busy}
+          />
+        </>
+      )}
     </section>
   );
 }
 
 function Deliveries({
-  hookId,
+  path,
+  caption,
+  empty,
+  urls,
   reloadKey,
   onRedeliver,
   busy,
 }: {
-  hookId: string;
+  path: string;
+  caption: string;
+  empty: string;
+  /** Webhook URLs by ID; adds a Webhook column when given. */
+  urls?: Record<string, string>;
   reloadKey: number;
   onRedeliver: (id: string) => void;
   busy: boolean;
@@ -201,7 +229,7 @@ function Deliveries({
 
   useEffect(() => {
     let cancelled = false;
-    api<Delivery[]>(`/webhooks/${hookId}/deliveries`)
+    api<Delivery[]>(path)
       .then((rows) => {
         if (!cancelled) setList(rows);
       })
@@ -211,17 +239,18 @@ function Deliveries({
     return () => {
       cancelled = true;
     };
-  }, [hookId, reloadKey]);
+  }, [path, reloadKey]);
 
   if (error) return <p role="alert">{error}</p>;
   if (!list) return <p>Loading…</p>;
-  if (list.length === 0) return <p>No deliveries yet.</p>;
+  if (list.length === 0) return <p>{empty}</p>;
   return (
     <div className="table-scroll">
       <table>
-        <caption>Deliveries, newest first</caption>
+        <caption>{caption}</caption>
         <thead>
           <tr>
+            {urls && <th scope="col">Webhook</th>}
             <th scope="col">Event</th>
             <th scope="col">Status</th>
             <th scope="col">Attempts</th>
@@ -233,6 +262,11 @@ function Deliveries({
         <tbody>
           {list.map((d) => (
             <tr key={d.id}>
+              {urls && (
+                <td>
+                  <code>{urls[d.subscription_id]}</code>
+                </td>
+              )}
               <td>{d.event_kind}</td>
               <td>
                 {DELIVERY_TEXT[d.status] ?? d.status}
