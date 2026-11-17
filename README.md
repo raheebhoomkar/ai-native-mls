@@ -2,7 +2,7 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Sprint 6 adds listing photos: upload with validation, thumbnails made by a background job worker, signed download links, removal with a retention period, and local-disk or S3-compatible storage. Sprints 7 and 8 add AI photo analysis: a vision model (Gemini, or a labelled demo provider when no key is set) suggests observable features from the photos, and an editor accepts, edits or rejects each one on the listing page. Accepted values are kept as confirmed features; AI never changes the fields an agent entered.
+**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Sprint 6 adds listing photos: upload with validation, thumbnails made by a background job worker, signed download links, removal with a retention period, and local-disk or S3-compatible storage. Sprints 7 and 8 add AI photo analysis: a vision model (Gemini, or a labelled demo provider when no key is set) suggests observable features from the photos, and an editor accepts, edits or rejects each one on the listing page. Accepted values are kept as confirmed features; AI never changes the fields an agent entered. Sprint 9 adds photo redaction: faces are found locally with OpenCV and plates, phone numbers, watermarks and signs by the vision model; a blurred copy is stored beside the original, and an editor approves or rejects it. Anything not checked is shown as not checked.
 
 **Live demo:** not deployed yet. The steps are in [docs/deployment/render.md](docs/deployment/render.md).
 
@@ -40,7 +40,8 @@ python3 -m venv .venv
 .venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --reload --port 8000
 
-# Background job worker (terminal 3): makes photo thumbnails, deletes removed files
+# Background job worker (terminal 3): makes photo thumbnails, runs AI and redaction checks,
+# deletes removed files
 cd services/api
 .venv/bin/python -m app.worker
 
@@ -99,7 +100,7 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 | `MEDIA_MAX_BYTES` | no | `10485760` | Largest upload (10 MB) |
 | `MEDIA_RETENTION_DAYS` | no | `7` | Days before the files of removed media are deleted |
 | `MEDIA_SIGNING_KEY` | in production | per process | Signs media download links (32+ characters). Unset outside production: links stop working when the API restarts |
-| `GEMINI_API_KEY` | no | unset | Google Gemini key for photo extraction. Unset: a demo adapter answers with output labelled `[Demo]`. The free tier may use what you send to improve Google's models, so send demo photos only (ADR 0004) |
+| `GEMINI_API_KEY` | no | unset | Google Gemini key for photo extraction and for finding plates, phone numbers, watermarks and signs to redact. Unset: extraction answers with output labelled `[Demo]`, and redaction blurs faces only and marks the rest as not checked (ADR 0005). The free tier may use what you send to improve Google's models, so send demo photos only (ADR 0004) |
 | `GEMINI_MODEL` | no | `gemini-3.5-flash` | Gemini model name |
 | `AI_TIMEOUT_SECONDS` | no | `90` | Time limit for one provider call |
 | `FORWARDED_ALLOW_IPS` | no | `127.0.0.1` | Reverse proxies trusted for the client address (container start script) |
@@ -162,4 +163,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md), [Sprint 5](docs/modules/s5-early-demo.md), [Sprint 6](docs/modules/s6-media-jobs.md).
+See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md), [Sprint 5](docs/modules/s5-early-demo.md), [Sprint 6](docs/modules/s6-media-jobs.md), [Sprint 7](docs/modules/s7-ai-extraction.md), [Sprint 8](docs/modules/s8-ai-review.md), [Sprint 9](docs/modules/s9-redaction.md).

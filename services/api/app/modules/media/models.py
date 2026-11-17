@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, one_of
 
-KINDS: tuple[str, ...] = ("original", "thumbnail")
-# Of an original: whether its derivatives are made. A thumbnail is always "ready".
+KINDS: tuple[str, ...] = ("original", "thumbnail", "redacted")
+# Of an original: whether its derivatives are made. A derivative is always "ready".
 STATUSES: tuple[str, ...] = ("processing", "ready", "failed")
 
 

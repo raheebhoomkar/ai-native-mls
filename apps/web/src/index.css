@@ -351,3 +351,53 @@ form.wide > label select {
   margin: 0.25rem 0;
   font-weight: 600;
 }
+
+/* Redaction: the original with outlined areas beside the blurred copy; stacked on phones. */
+.redaction-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.redaction-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.redaction-preview figure {
+  margin: 0;
+}
+
+.redaction-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.redaction-preview .boxed {
+  position: relative;
+}
+
+.redaction-preview .box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #d00;
+}
+
+.redaction-preview .box.uncertain {
+  border-style: dashed;
+  border-color: #c60;
+}
+
+.region-list {
+  padding-left: 1.25rem;
+}
+
+.note-field {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 30rem;
+}

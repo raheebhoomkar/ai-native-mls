@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
-from app.modules.ai.schemas import Extraction, Feature, PhotoExtraction
+from app.modules.ai.schemas import Extraction, Feature, PhotoExtraction, Region
 
 
 @dataclass(frozen=True)
@@ -88,3 +88,27 @@ class DemoVisionProvider:
             ]
         )
         return ProviderResult(extraction=extraction, provider="demo", model="demo-fixed-v1")
+
+
+# --- Region locators (redaction) -----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LocatorResult:
+    regions: list[Region]
+    provider: str
+    model: str
+    model_version: str | None = None
+
+
+class RegionLocator(Protocol):
+    """Finds plates, phone numbers, watermarks and signage in one photo."""
+
+    def locate(self, photo: Photo) -> LocatorResult: ...
+
+
+class DemoRegionLocator:
+    """No model configured: finds nothing. The run records the categories as not checked."""
+
+    def locate(self, photo: Photo) -> LocatorResult:
+        return LocatorResult(regions=[], provider="demo", model="none")

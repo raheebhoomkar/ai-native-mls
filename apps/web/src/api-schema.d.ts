@@ -603,6 +603,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/media/{asset_id}/redactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Redaction
+         * @description Check one photo for faces, plates, phone numbers, watermarks and signs, and make a
+         *     blurred copy for review. Poll the listing's redactions until the run finishes.
+         */
+        post: operations["request_redaction_api_v1_media__asset_id__redactions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/{listing_id}/redactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Redactions
+         * @description Newest first, for the listing's current photos.
+         */
+        get: operations["list_redactions_api_v1_listings__listing_id__redactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/redactions/{run_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide
+         * @description Approve or reject a redacted copy. One decision per check; the original never changes.
+         */
+        post: operations["decide_api_v1_ai_redactions__run_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -804,6 +865,15 @@ export interface components {
              * Format: date-time
              */
             decided_at: string;
+        };
+        /** DetectorUsed */
+        DetectorUsed: {
+            /** Detector */
+            detector: string;
+            /** Version */
+            version: string;
+            /** Categories */
+            categories: string[];
         };
         /** ErrorBody */
         ErrorBody: {
@@ -1442,6 +1512,140 @@ export interface components {
              */
             version: number;
         };
+        /**
+         * Redaction
+         * @description What a redaction run found and blurred. Stored on the run; shown to the reviewer.
+         */
+        Redaction: {
+            /** Policy Version */
+            policy_version: string;
+            /** Width */
+            width: number;
+            /** Height */
+            height: number;
+            /** Regions */
+            regions: components["schemas"]["Region"][];
+            /** Checked */
+            checked: components["schemas"]["DetectorUsed"][];
+            /** Unchecked */
+            unchecked: components["schemas"]["Unchecked"][];
+            /**
+             * Derivative Id
+             * Format: uuid
+             */
+            derivative_id: string;
+        };
+        /**
+         * RedactionDecisionIn
+         * @description Approve (`accepted`) or reject a redacted copy.
+         */
+        RedactionDecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accepted" | "rejected";
+            /** Note */
+            note?: string | null;
+        };
+        /** RedactionDecisionOut */
+        RedactionDecisionOut: {
+            /** Decision */
+            decision: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Decided By User Id
+             * Format: uuid
+             */
+            decided_by_user_id: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+        };
+        /**
+         * RedactionRunOut
+         * @description One redaction check of one photo.
+         */
+        RedactionRunOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /**
+             * Media Asset Id
+             * Format: uuid
+             */
+            media_asset_id: string;
+            /** Status */
+            status: string;
+            /** Agent Version */
+            agent_version: string;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Model Version */
+            model_version: string | null;
+            output: components["schemas"]["Redaction"] | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Redacted Url */
+            redacted_url: string | null;
+            /** Review Status */
+            review_status: ("pending" | "approved" | "rejected") | null;
+            decision: components["schemas"]["RedactionDecisionOut"] | null;
+            /** Can Review */
+            can_review: boolean;
+        };
+        /**
+         * Region
+         * @description One area to blur. `box` is left, top, width, height as fractions of the image.
+         */
+        Region: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "face" | "licence_plate" | "phone_number" | "watermark" | "signage";
+            /** Box */
+            box: [
+                number,
+                number,
+                number,
+                number
+            ];
+            /** Confidence */
+            confidence?: number | null;
+            /** Detector */
+            detector: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Uncertain
+             * @default false
+             */
+            uncertain: boolean;
+        };
         /** RoleChange */
         RoleChange: {
             /**
@@ -1492,6 +1696,16 @@ export interface components {
             /** Reason */
             reason?: string | null;
             sold_price?: components["schemas"]["Money-Input"] | null;
+        };
+        /**
+         * Unchecked
+         * @description Categories nobody looked for in this photo, and why.
+         */
+        Unchecked: {
+            /** Categories */
+            categories: string[];
+            /** Reason */
+            reason: string;
         };
         /** UserOut */
         UserOut: {
@@ -3953,6 +4167,220 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_redaction_api_v1_media__asset_id__redactions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedactionRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_redactions_api_v1_listings__listing_id__redactions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedactionRunOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_api_v1_ai_redactions__run_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedactionDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedactionDecisionOut"];
                 };
             };
             /** @description Unauthorized */

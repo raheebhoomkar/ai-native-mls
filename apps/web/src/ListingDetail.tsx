@@ -10,11 +10,13 @@ import {
 } from "./api";
 import type { components } from "./api-schema";
 import { ListingMedia } from "./ListingMedia";
+import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
 
 type Status = Listing["status"];
 type StatusChange = components["schemas"]["StatusChangeOut"];
+type Media = components["schemas"]["MediaOut"];
 
 const PROPERTY_TYPE_LABELS: Record<
   Listing["property"]["property_type"],
@@ -69,6 +71,8 @@ export function ListingDetail({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  // The gallery's latest photo list, shared with the redaction panel.
+  const [media, setMedia] = useState<Media[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -353,7 +357,16 @@ export function ListingDetail({
         </div>
       )}
 
-      <ListingMedia listingId={listing.id} canManage={listing.can_edit} />
+      <ListingMedia
+        listingId={listing.id}
+        canManage={listing.can_edit}
+        onLoaded={setMedia}
+      />
+      <ListingRedaction
+        listingId={listing.id}
+        media={media}
+        canRequest={listing.can_edit && !listing.archived_at}
+      />
 
       {isOwn && <History listingId={listing.id} version={listing.version} />}
     </section>

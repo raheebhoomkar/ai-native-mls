@@ -185,7 +185,7 @@ def thumbnails_for(session: Session, originals: Sequence[MediaAsset]) -> dict[UU
     return {row.original_id: row for row in rows if row.original_id is not None}
 
 
-def _get_manageable(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
+def get_manageable(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
     asset = session.get(MediaAsset, asset_id)
     if asset is None or asset.deleted_at is not None or asset.kind != "original":
         raise _not_found()
@@ -199,7 +199,7 @@ def _get_manageable(session: Session, ctx: TenantContext, asset_id: UUID) -> Med
 
 def delete(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
     """Hide now; delete the files after the retention period (`media.purge` job)."""
-    asset = _get_manageable(session, ctx, asset_id)
+    asset = get_manageable(session, ctx, asset_id)
     now = datetime.now(UTC)
     session.execute(
         update(MediaAsset)
@@ -219,7 +219,7 @@ def delete(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
 
 def retry(session: Session, ctx: TenantContext, asset_id: UUID) -> MediaAsset:
     """Process an original again after its processing failed."""
-    asset = _get_manageable(session, ctx, asset_id)
+    asset = get_manageable(session, ctx, asset_id)
     if asset.status != "failed":
         raise AppError(409, "not_failed", "Only media whose processing failed can be retried.")
     asset.status = "processing"
@@ -273,6 +273,29 @@ def without_metadata(data: bytes, max_side: int = 1600) -> bytes:
         raise ValueError(str(error)) from error
 
 
+def add_derivative(session: Session, original: MediaAsset, data: bytes, *, kind: str) -> MediaAsset:
+    """Store a JPEG made from `original` as its own row and file. The original is not touched."""
+    derivative_id = uuid4()
+    derivative = MediaAsset(
+        id=derivative_id,
+        organisation_id=original.organisation_id,
+        listing_id=original.listing_id,
+        original_id=original.id,
+        uploaded_by_user_id=original.uploaded_by_user_id,
+        kind=kind,
+        status="ready",
+        storage_key=f"{original.organisation_id}/{derivative_id}",
+        filename=original.filename,
+        content_type="image/jpeg",
+        size_bytes=len(data),
+        sha256=hashlib.sha256(data).hexdigest(),
+    )
+    session.add(derivative)
+    session.flush()
+    get_storage().put(derivative.storage_key, data, "image/jpeg")
+    return derivative
+
+
 def _thumbnail_failed(session: Session, job: Job) -> None:
     original = session.get(MediaAsset, UUID(job.payload["asset_id"]))
     if original is not None and original.status == "processing":
@@ -300,25 +323,7 @@ def make_thumbnail(session: Session, job: Job) -> None:
         )
     )
     if exists is None:
-        thumbnail_id = uuid4()
-        session.add(
-            MediaAsset(
-                id=thumbnail_id,
-                organisation_id=original.organisation_id,
-                listing_id=original.listing_id,
-                original_id=original.id,
-                uploaded_by_user_id=original.uploaded_by_user_id,
-                kind="thumbnail",
-                status="ready",
-                storage_key=f"{original.organisation_id}/{thumbnail_id}",
-                filename=original.filename,
-                content_type="image/jpeg",
-                size_bytes=len(thumbnail),
-                sha256=hashlib.sha256(thumbnail).hexdigest(),
-            )
-        )
-        session.flush()
-        get_storage().put(f"{original.organisation_id}/{thumbnail_id}", thumbnail, "image/jpeg")
+        add_derivative(session, original, thumbnail, kind="thumbnail")
     original.status, original.error = "ready", None
 
 

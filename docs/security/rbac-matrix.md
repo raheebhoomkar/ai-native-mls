@@ -33,6 +33,8 @@ AI photo extraction adds no permission of its own either. Whoever may edit a lis
 
 Reviewing AI suggestions adds no permission either. Whoever may edit the listing may accept, edit or reject a suggestion (`POST /ai/runs/{id}/decisions`); each decision is final and audited. Accepted or edited values become listing features, never listing fields. Whoever may read the listing may see the decisions and its confirmed features (`GET /listings/{id}/features`). Another organisation gets 404. See `docs/modules/s8-ai-review.md`.
 
+Photo redaction adds no permission either. Whoever may manage a listing's photos (edit rights, listing not archived) may request a check of a photo (`POST /media/{id}/redactions`). Whoever may edit the listing may approve or reject the blurred copy (`POST /ai/redactions/{id}/decision`); each decision is final and audited. Whoever may read the listing may list its checks and see the copies (`GET /listings/{id}/redactions`). Another organisation gets 404. The original photo is never changed. See `docs/modules/s9-redaction.md`.
+
 ## Role assignment rules
 
 - An MLS organisation may hold: MLS administrator, broker, agent, API consumer.
@@ -52,7 +54,7 @@ Reviewing AI suggestions adds no permission either. Whoever may edit the listing
 
 ## Audited actions
 
-`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`, `media.uploaded`, `media.deleted`, `ai.extraction_requested`, `ai.suggestion_decided`.
+`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`, `media.uploaded`, `media.deleted`, `ai.extraction_requested`, `ai.suggestion_decided`, `ai.redaction_requested`, `ai.redaction_decided`.
 
 Audit events record actor, organisation, target, IP address, request ID and time. They never contain passwords, session tokens or link tokens.
 

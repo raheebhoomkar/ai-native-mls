@@ -86,11 +86,11 @@ def request_extraction(session: Session, ctx: TenantContext, listing_id: UUID) -
 
 
 def list_runs(session: Session, ctx: TenantContext, listing_id: UUID) -> Sequence[AgentRun]:
-    """Newest first. Whoever may read the listing may read its runs."""
+    """Extraction runs, newest first. Whoever may read the listing may read its runs."""
     listings.get_listing(session, ctx, listing_id)  # 404 if not visible
     return session.scalars(
         select(AgentRun)
-        .where(AgentRun.listing_id == listing_id)
+        .where(AgentRun.listing_id == listing_id, AgentRun.agent == AGENT)
         .order_by(AgentRun.created_at.desc(), AgentRun.id.desc())
     ).all()
 
@@ -170,7 +170,7 @@ def run_extraction(session: Session, job: Job) -> None:
 
 def items(run: AgentRun) -> dict[str, Feature]:
     """Each suggestion of a run by its review key, `<media_asset_id>:<index>`."""
-    if run.output is None:
+    if run.output is None or run.agent != AGENT:
         return {}
     extraction = Extraction.model_validate(run.output)
     return {

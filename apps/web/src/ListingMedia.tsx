@@ -19,9 +19,12 @@ export const POLL_MS = 2000;
 export function ListingMedia({
   listingId,
   canManage,
+  onLoaded,
 }: {
   listingId: string;
   canManage: boolean;
+  /** Called with each fresh list, so other panels show the same photos. */
+  onLoaded?: (media: Media[]) => void;
 }) {
   const [items, setItems] = useState<Media[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -39,6 +42,7 @@ export function ListingMedia({
         if (cancelled) return;
         setItems(media);
         setLoadError(null);
+        onLoaded?.(media);
       })
       .catch((error) => {
         if (!cancelled) setLoadError(describeError(error));
@@ -46,6 +50,8 @@ export function ListingMedia({
     return () => {
       cancelled = true;
     };
+    // onLoaded is left out: a new callback each render must not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId, reloadKey]);
 
   const processing = items?.some((item) => item.status === "processing");
