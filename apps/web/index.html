@@ -26,10 +26,14 @@
           theme = localStorage.getItem("theme");
         } catch (e) {}
         if (theme !== "light" && theme !== "dark")
-          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          theme = matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
         document.documentElement.dataset.theme = theme;
         if (theme === "dark")
-          document.querySelector('meta[name="theme-color"]').setAttribute("content", "#151310");
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute("content", "#151310");
       })();
     </script>
   </head>

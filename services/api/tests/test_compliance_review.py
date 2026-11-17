@@ -130,20 +130,19 @@ def test_decide_appeal_and_rule(db: Session, brokerage: Brokerage, admin: TestCl
 
     # Audited with the rule and policy version; the listing is untouched.
     events = db.scalars(
-        select(AuditEvent)
-        .where(
+        select(AuditEvent).where(
             AuditEvent.action.like("compliance.%"), AuditEvent.action != "compliance.scan_requested"
         )
-        .order_by(AuditEvent.occurred_at)
     ).all()
-    assert [(e.action, e.detail["item"], e.detail["decision"]) for e in events] == [
+    # now() is fixed for the test's outer transaction, so these events share a timestamp.
+    assert sorted((e.action, e.detail["item"], e.detail["decision"]) for e in events) == [
+        ("compliance.appeal_decided", "1:appeal_decision", "overturned"),
+        ("compliance.finding_appealed", "1:appeal", "appealed"),
         ("compliance.finding_decided", "0", "accepted"),
         ("compliance.finding_decided", "1", "edits_requested"),
-        ("compliance.finding_appealed", "1:appeal", "appealed"),
-        ("compliance.appeal_decided", "1:appeal_decision", "overturned"),
     ]
     assert all(e.detail["policy_version"] == "2026.11-1" for e in events)
-    assert events[0].detail["rule_id"] == "IN-HP-01"
+    assert next(e for e in events if e.detail["item"] == "0").detail["rule_id"] == "IN-HP-01"
     assert agent.get(f"{LISTINGS}/{listing['id']}").json()["remarks"] == REMARKS
 
 

@@ -278,11 +278,7 @@ test("a listing shared by another organisation is read-only with no history requ
     screen
       .getAllByRole("button")
       .map((b) => b.getAttribute("aria-label") ?? b.textContent),
-  ).toEqual([
-    "Switch to dark mode",
-    "Menu",
-    "Sign out",
-  ]);
+  ).toEqual(["Switch to dark mode", "Menu", "Sign out"]);
   expect(screen.queryByRole("link", { name: "Edit" })).toBeNull();
   expect(screen.queryByText("Status history")).toBeNull();
   expect(api.calls.some((c) => c.key.endsWith("/history"))).toBe(false);
