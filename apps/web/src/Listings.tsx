@@ -6,6 +6,7 @@ import type { components } from "./api-schema";
 import { type Bounds, MapView } from "./MapView";
 
 export type Listing = components["schemas"]["ListingOut"];
+type SearchHit = components["schemas"]["SearchHit"];
 type Status = Listing["status"];
 
 export const STATUS_LABELS: Record<Status, string> = {
@@ -32,6 +33,8 @@ export function formatMoney(money: { amount: string; currency: string }) {
 }
 
 const EMPTY_FILTERS = {
+  // Ranked semantic search; when set, `q` and `sort` do not apply.
+  describe: "",
   q: "",
   status: "",
   scope: "all",
@@ -46,12 +49,16 @@ const EMPTY_FILTERS = {
   max_lon: "",
 };
 
-function toQuery(filters: typeof EMPTY_FILTERS): string {
+function toPath(filters: typeof EMPTY_FILTERS): string {
+  const { describe, ...rest } = filters;
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
+  for (const [key, value] of Object.entries(rest)) {
     if (value.trim()) params.set(key, value.trim());
   }
-  return params.toString();
+  if (!describe.trim()) return `/listings?${params.toString()}`;
+  params.delete("sort");
+  params.set("q", describe.trim());
+  return `/listings/search?${params.toString()}`;
 }
 
 export function Listings({
@@ -62,15 +69,25 @@ export function Listings({
   // `draft` is what the form shows; `applied` is what the list was last searched with.
   const [draft, setDraft] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState(EMPTY_FILTERS);
-  const listings = useList<Listing>(
-    `/listings?${toQuery(applied)}`,
+  const listings = useList<Listing | SearchHit>(
+    toPath(applied),
     organisation.id,
   );
+  const rows = useMemo(
+    () =>
+      listings.items.map((item) =>
+        "explanation" in item
+          ? item
+          : { listing: item, explanation: null, score: null },
+      ),
+    [listings.items],
+  );
+  const note = rows.find((row) => row.explanation?.note)?.explanation?.note;
 
   const [showMap, setShowMap] = useState(false);
   const points = useMemo(
     () =>
-      listings.items.flatMap((listing) => {
+      rows.flatMap(({ listing }) => {
         const location = listing.property.location;
         return location
           ? [
@@ -84,7 +101,7 @@ export function Listings({
             ]
           : [];
       }),
-    [listings.items],
+    [rows],
   );
   const inArea = applied.min_lat !== "";
 
@@ -129,6 +146,16 @@ export function Listings({
       )}
 
       <form className="filters" onSubmit={search} aria-label="Filter listings">
+        <label className="describe">
+          Describe the home
+          <input
+            type="search"
+            placeholder="e.g. sea-facing flat with a balcony near the station"
+            maxLength={500}
+            value={draft.describe}
+            onChange={(e) => set("describe")(e.target.value)}
+          />
+        </label>
         <label>
           Search
           <input
@@ -235,20 +262,26 @@ export function Listings({
             label="Map of the listings below"
             onSearchArea={searchArea}
           />
-          {points.length < listings.items.length && (
+          {points.length < rows.length && (
             <p>
-              {listings.items.length - points.length} of the listings below have
-              no location and are not on the map.
+              {rows.length - points.length} of the listings below have no
+              location and are not on the map.
             </p>
           )}
         </>
       )}
       {listings.loading && <p>Loading…</p>}
       {listings.error && <p role="alert">{listings.error}</p>}
-      {!listings.loading && !listings.error && listings.items.length === 0 && (
+      {!listings.loading && !listings.error && rows.length === 0 && (
         <p>No listings match.</p>
       )}
-      {listings.items.length > 0 && (
+      {applied.describe && rows.length > 0 && (
+        <p>
+          Best matches first.{" "}
+          {note && <strong className="demo-note">{note}</strong>}
+        </p>
+      )}
+      {rows.length > 0 && (
         <div className="table-scroll">
           <table>
             <thead>
@@ -261,10 +294,11 @@ export function Listings({
                 <th scope="col">Beds</th>
                 <th scope="col">Agent</th>
                 <th scope="col">Organisation</th>
+                {applied.describe && <th scope="col">Why it matched</th>}
               </tr>
             </thead>
             <tbody>
-              {listings.items.map((listing) => {
+              {rows.map(({ listing, explanation, score }) => {
                 const address = listing.property.address;
                 return (
                   <tr key={listing.id}>
@@ -284,6 +318,15 @@ export function Listings({
                     <td>{listing.property.bedrooms ?? "—"}</td>
                     <td>{listing.listing_agent.full_name}</td>
                     <td>{listing.organisation_name}</td>
+                    {explanation && (
+                      <td>
+                        Score {score?.toFixed(2)}
+                        {explanation.matched_words.length > 0 &&
+                          ` · words: ${explanation.matched_words.join(", ")}`}
+                        {explanation.filters.length > 0 &&
+                          ` · filters: ${explanation.filters.join(", ").replace(/_/g, " ")}`}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

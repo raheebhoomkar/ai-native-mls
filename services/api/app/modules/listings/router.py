@@ -39,6 +39,14 @@ from app.modules.listings.schemas import (
 )
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext, require
+from app.modules.search import service as search
+from app.modules.search.schemas import (
+    DEMO_NOTE,
+    Explanation,
+    SearchFilters,
+    SearchHit,
+    SearchResults,
+)
 
 properties_router = APIRouter(prefix="/properties", tags=["properties"])
 listings_router = APIRouter(prefix="/listings", tags=["listings"])
@@ -275,6 +283,34 @@ def list_listings(
         else None
     )
     return Page(items=_listings_out(session, ctx, items, near), next_cursor=next_cursor)
+
+
+@listings_router.get("/search", responses={**_ERRORS, 503: {"model": ErrorResponse}})
+def search_listings(
+    session: SessionDep, ctx: CanRead, filters: Annotated[SearchFilters, Query()]
+) -> SearchResults:
+    """Listings ranked by how well they match a description. The usual filters and visibility
+    rules apply first; ranking only orders what you may already see.
+    """
+    found = search.search(session, ctx, filters, filters.q, filters.limit)
+    applied = sorted(filters.model_dump(exclude_defaults=True, exclude={"q", "limit", "sort"}))
+    out = _listings_out(session, ctx, [hit.listing for hit in found.hits])
+    return SearchResults(
+        items=[
+            SearchHit(
+                listing=listing,
+                score=hit.score,
+                explanation=Explanation(
+                    matched_words=hit.matched_words,
+                    filters=applied,
+                    source=found.source,
+                    model=found.model,
+                    note=DEMO_NOTE if found.source == "demo" else None,
+                ),
+            )
+            for hit, listing in zip(found.hits, out, strict=True)
+        ]
+    )
 
 
 @listings_router.get("/{listing_id}", responses=_ERRORS)

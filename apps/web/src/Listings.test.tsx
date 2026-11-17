@@ -74,8 +74,9 @@ function stubApi(
       if (path === "/api/v1/auth/me") return Response.json(ME);
       if (path === "/api/v1/organisations/current")
         return Response.json(organisation(permissions));
-      if (path === "/api/v1/listings") {
+      if (path === "/api/v1/listings" || path === "/api/v1/listings/search") {
         const params = new URLSearchParams(query);
+        params.set("_path", path);
         searches.push(params);
         return Response.json(search(params));
       }
@@ -126,6 +127,7 @@ test("filters are sent to the API only when Search is pressed, and can be cleare
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
   expect(await screen.findByText("No listings match.")).toBeTruthy();
   expect(Object.fromEntries(searches[1]!)).toEqual({
+    _path: "/api/v1/listings",
     q: "villa",
     status: "active",
     scope: "all",
@@ -136,6 +138,52 @@ test("filters are sent to the API only when Search is pressed, and can be cleare
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   expect(await screen.findByText("Lake-view apartment")).toBeTruthy();
   expect((screen.getByLabelText("Search") as HTMLInputElement).value).toBe("");
+});
+
+test("describing the home runs a ranked search and explains each match", async () => {
+  const searches = stubApi(["listing:read"], (query) =>
+    query.get("_path") === "/api/v1/listings/search"
+      ? {
+          items: [
+            {
+              listing: listing("l1", "Sea-facing flat", "1"),
+              score: 0.4321,
+              explanation: {
+                matched_words: ["sea", "facing"],
+                filters: ["min_price"],
+                source: "demo",
+                model: "hashing-v1",
+                note: "Demo embedder: it matches shared words and spellings, not meaning.",
+              },
+            },
+          ],
+          next_cursor: null,
+        }
+      : { items: [], next_cursor: null },
+  );
+  render(<App />);
+  await screen.findByText("No listings match.");
+
+  fireEvent.change(screen.getByLabelText("Describe the home"), {
+    target: { value: " sea facing " },
+  });
+  fireEvent.change(screen.getByLabelText("Min price"), {
+    target: { value: "100" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+  const row = (await screen.findByText("Sea-facing flat")).closest("tr")!;
+  expect(row.textContent).toContain("Score 0.43");
+  expect(row.textContent).toContain("words: sea, facing");
+  expect(row.textContent).toContain("filters: min price");
+  expect(screen.getByText(/not meaning/)).toBeTruthy();
+  // The description is the query; sort does not apply to a ranked search.
+  expect(Object.fromEntries(searches[1]!)).toEqual({
+    _path: "/api/v1/listings/search",
+    q: "sea facing",
+    scope: "all",
+    min_price: "100",
+  });
 });
 
 test("load more appends the next page using the cursor", async () => {

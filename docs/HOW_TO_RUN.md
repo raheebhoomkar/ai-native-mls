@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 11 of the plan are done. Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 14 of the plan are done (Phases A and B). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -20,6 +20,8 @@ Sprints 0 to 11 of the plan are done. Per-sprint notes, with design decisions an
 | Import | Check and import a CSV of listings; see where an imported listing came from | `s10-import.md` |
 | Compliance flags | Check titles and remarks against an illustrative India policy; review queue; accept, dismiss, request edits; appeal | `s11-compliance.md` |
 | Maps and location | See where a property is and how exact the point is; set it by hand; show listings on a map and search the visible area | `s12-geospatial.md` |
+| Semantic search | Describe the home in your own words; listings are ranked by match, with the reason shown | `s13-semantic-search.md` |
+| Valuation | Estimate a range from comparable reported sales, with comps, assumptions and a days-on-market simulation | `s14-valuation.md` |
 
 ## 1. Prerequisites
 
@@ -243,7 +245,30 @@ New and changed addresses are located by a background job. Without settings, the
 6. As `harbour.admin@demo.example.com`, a shared Sunrise listing shows its point and map but no "Set the point by hand" and no "Neighbourhood".
 7. API: `GET /api/v1/listings?near_lat=19.076&near_lon=72.8777&radius_km=10` lists listings within 10 km with `distance_km`; `min_lat`, `min_lon`, `max_lat`, `max_lon` give a box. `PUT /api/v1/properties/{id}/location` sets a point; audit actions `property.geocoded` and `property.location_set`.
 
-### 6.11 API checks
+### 6.11 Semantic search (worker must be running)
+
+Every listing change writes an outbox event, and the worker re-indexes the listing. Without settings, the labelled demo embedder is used: it matches shared words and spellings, not meaning. `EMBEDDER=gemini` (with `GEMINI_API_KEY`) uses Gemini embeddings; see [AI with a real key](#ai-with-a-real-key). Vectors are kept in Postgres unless `VECTOR_STORE=qdrant`.
+
+1. As `sunrise.agent@demo.example.com`, Listings page, type `apartment near the lake` in "Describe the home" and press Search. "[Demo] 3 BHK apartment near the lake" comes first. Above the table: "Best matches first. Demo embedder: it matches shared words and spellings, not meaning." The last column, "Why it matched", shows the score, the shared words and any filters used.
+2. Add a filter (for example City `Pune`) and search again: only Pune listings are ranked, and "filters: city" appears.
+3. Edit a listing's title to include `rooftop terrace`, wait a few seconds, describe `rooftop terrace`: it comes first. Withdraw it: it no longer appears.
+4. As `harbour.admin@demo.example.com`, describe `apartment near the lake`: Harbour's own listings and Sunrise's shared active listings appear; Sunrise drafts and private listings never do.
+5. Clear "Describe the home" and press Search: the normal list and sort come back.
+6. API: `GET /api/v1/listings/search?q=sea%20facing&city=Mumbai` returns `items` of `{listing, score, explanation}`. If the embedder is down: 503 `search_unavailable`.
+
+### 6.12 Valuation
+
+Estimates use sold listings the caller may see whose sale price the listing agent reported. The seed adds six `[Demo] Sold:` apartments in Powai with invented prices and dates. This is decision support, not an appraisal.
+
+1. As `sunrise.agent@demo.example.com`, open `[Demo] 3 BHK apartment near the lake`. The "Valuation" section starts with "Not an appraisal and not a guaranteed sale price…". Press "Estimate value".
+2. You see "Estimated range ₹… to ₹…, middle ₹…. From 6 reported sales closed between … and …, by price per sq ft times 1250 sq ft." Below: "Days on market" with simulated percentiles and the share sold within 30, 60 and 90 days ("A scenario, not a forecast"), "Offers are not recorded…", and a comparable sales table whose caption says the prices are reported by agents and not verified.
+3. Open "Assumptions": the comp rules, "Condition is not recorded, so it is not used", the model and simulation versions and the seed.
+4. Open `[Demo] Garden villa` (Pune, no sold villas) and press "Estimate value": "Insufficient data: 0 comparable sales found, at least 3 needed. No estimate is shown." No number appears.
+5. As `harbour.admin@demo.example.com`, open the shared lake listing: there is no "Valuation" section. `POST /api/v1/listings/{id}/valuations` answers 404.
+6. Reproducibility: `POST /api/v1/listings/{id}/valuations` with `{"seed": 42}` twice gives the same `result.simulation`.
+7. Outcome: value a listing, then mark it sold with a price; with the worker running, the valuation shows "Sold for … The estimate's middle was …% above/below it, inside/outside the range." `GET /api/v1/valuations/evaluation` reports the count, median absolute error and share inside the range per model version.
+
+### 6.13 API checks
 
 The interactive docs at http://localhost:8000/api/v1/docs can call every endpoint. Sign in with `POST /api/v1/auth/login` there first; the session cookie is then used for the other calls. From a terminal:
 
@@ -257,13 +282,17 @@ curl -s -b /tmp/mls.cookies 'http://localhost:8000/api/v1/audit-events?limit=10'
 
 The audit log has no screen yet; read it through `GET /api/v1/audit-events` as an administrator. API conventions (error envelope, `X-Organisation-ID`, `version` for edits, cursor pagination) are in the README.
 
-### 6.12 Phone width
+### 6.14 Phone width
 
 In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column.
 
 ## AI with a real key
 
 Put `GEMINI_API_KEY=...` in `.env` and restart the API and the worker. Get a key at https://aistudio.google.com/apikey. The free tier may use what you send to improve Google's models, so upload demo photos only. Photos are sent without camera or GPS data. Decisions about the provider are in `docs/decisions/0004-*.md` and `0005-*.md`.
+
+Semantic search stays on the demo embedder until you also set `EMBEDDER=gemini`, because switching sends listing text to Google and re-embeds every listing. After switching (or after changing `VECTOR_STORE`), restart the API and the worker and run `cd services/api && .venv/bin/python -m app.modules.search.cli reindex`. Until the worker finishes, search returns only listings already embedded with the new model.
+
+To use Qdrant instead of Postgres for vectors locally: `docker compose --profile qdrant up -d`, set `VECTOR_STORE=qdrant` in `.env`, restart, re-index. For Qdrant Cloud set `QDRANT_URL` (https) and `QDRANT_API_KEY`.
 
 ## Troubleshooting
 
@@ -273,6 +302,7 @@ Put `GEMINI_API_KEY=...` in `.env` and restart the API and the worker. Get a key
 | `connection refused` on 5432 | Postgres not running: `docker compose up -d --wait`. Another Postgres on 5432: set `POSTGRES_PORT` and the port in `DATABASE_URL` in `.env`. |
 | Photos stay "Processing", AI runs stay queued, locations stay "Finding this address" | The worker (terminal 2) is not running. |
 | Seeded properties made before Sprint 12 have no location | Run the seed again: it queues a lookup for them. |
+| "Describe the home" finds nothing, or misses listings made before Sprint 13 | Worker not running, or the listings were never indexed. Run the seed again (it queues indexing for old demo listings) or `python -m app.modules.search.cli reindex`. |
 | A check fails with `No handler registered for job kind ...` | A worker started before you pulled new code took the job. Stop every old `python -m app.worker` process, start one again, then run the check again. |
 | Photos stop loading after an API restart | Download links are signed with a per-process key in development. Reload the page. |
 | Sign-in works but lists are empty | Seed not loaded: `cd services/api && .venv/bin/python -m app.seed`. |

@@ -13,6 +13,7 @@ import { ImportSourceDetails } from "./ListingImport";
 import { ListingMedia } from "./ListingMedia";
 import { ListingCompliance } from "./ListingCompliance";
 import { ListingLocation } from "./ListingLocation";
+import { ListingValuation } from "./ListingValuation";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
@@ -386,6 +387,8 @@ export function ListingDetail({
           canRequest={listing.can_edit && !listing.archived_at}
         />
       )}
+
+      {isOwn && <ListingValuation listingId={listing.id} />}
 
       {isOwn && <History listingId={listing.id} version={listing.version} />}
     </section>

@@ -14,6 +14,7 @@ os.environ["DATABASE_URL"] = _TEST_URL.render_as_string(hide_password=False)
 os.environ.setdefault("ENVIRONMENT", "test")
 # Blank beats the key in .env, so tests never call Gemini; only `pytest -m live` does.
 os.environ["GEMINI_API_KEY"] = ""
+os.environ["EMBEDDER"] = "demo"
 
 from collections.abc import Callable, Iterator  # noqa: E402
 from pathlib import Path  # noqa: E402

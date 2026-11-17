@@ -441,6 +441,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Listings
+         * @description Listings ranked by how well they match a description. The usual filters and visibility
+         *     rules apply first; ranking only orders what you may already see.
+         */
+        get: operations["search_listings_api_v1_listings_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings/{listing_id}": {
         parameters: {
             query?: never;
@@ -892,6 +913,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/valuations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Valuations
+         * @description The 20 newest valuations of a listing, newest first.
+         */
+        get: operations["list_valuations_api_v1_listings__listing_id__valuations_get"];
+        put?: never;
+        /**
+         * Request Valuation
+         * @description Estimate a range from comparable reported sales. Not an appraisal. Only the
+         *     organisation that owns the listing may ask; another organisation gets 404.
+         */
+        post: operations["request_valuation_api_v1_listings__listing_id__valuations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/valuations/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluation
+         * @description How earlier estimates compare with the prices listings later sold for, per model version.
+         */
+        get: operations["evaluation_api_v1_valuations_evaluation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1016,6 +1082,28 @@ export interface components {
              */
             unit: "sqft" | "sqm";
         };
+        /**
+         * AskingSummary
+         * @description Active listings matching the same rules. Asking prices, not sale prices; never in the
+         *     estimate.
+         */
+        AskingSummary: {
+            /** Count */
+            count: number;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "price_per_sqft" | "price";
+            /** Low */
+            low: string;
+            /** Median */
+            median: string;
+            /** High */
+            high: string;
+            /** Currency */
+            currency: string;
+        };
         /** AuditEventOut */
         AuditEventOut: {
             /**
@@ -1051,6 +1139,44 @@ export interface components {
             header: string;
             /** Field */
             field: string | null;
+        };
+        /** Comp */
+        Comp: {
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Title */
+            title: string;
+            /** Organisation Name */
+            organisation_name: string;
+            closed_price: components["schemas"]["Money-Output"];
+            /**
+             * Closed On
+             * Format: date
+             */
+            closed_on: string;
+            /** Listed On */
+            listed_on: string | null;
+            /** Days On Market */
+            days_on_market: number | null;
+            /**
+             * Distance Km
+             * @description Null when either point is unknown.
+             */
+            distance_km: number | null;
+            /** Area Sqft */
+            area_sqft: number | null;
+            /** Price Per Sqft */
+            price_per_sqft: string | null;
+            /** Bedrooms */
+            bedrooms: number | null;
+            /**
+             * Price Source
+             * @default Reported by the listing agent when marking the listing sold; not verified.
+             */
+            price_source: string;
         };
         /** ComplianceDecisionOut */
         ComplianceDecisionOut: {
@@ -1341,6 +1467,59 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** Estimate */
+        Estimate: {
+            low: components["schemas"]["Money-Output"];
+            median: components["schemas"]["Money-Output"];
+            high: components["schemas"]["Money-Output"];
+            /**
+             * Method
+             * @description price_per_sqft: comps' price per sqft times the subject's area. closed_price: comps' prices, used when the subject has no area.
+             * @enum {string}
+             */
+            method: "price_per_sqft" | "closed_price";
+            /** Subject Area Sqft */
+            subject_area_sqft: number | null;
+        };
+        /** EvaluationOut */
+        EvaluationOut: {
+            /** Model Version */
+            model_version: string;
+            /**
+             * Count
+             * @description Valuations of listings that later sold.
+             */
+            count: number;
+            /** Median Abs Error Pct */
+            median_abs_error_pct: number | null;
+            /** Within Range Share */
+            within_range_share: number | null;
+        };
+        /** Explanation */
+        Explanation: {
+            /**
+             * Matched Words
+             * @description Words of the query found in the listing.
+             */
+            matched_words: string[];
+            /**
+             * Filters
+             * @description Filters that narrowed the candidates.
+             */
+            filters: string[];
+            /**
+             * Source
+             * @description Embedder: demo or gemini.
+             */
+            source: string;
+            /** Model */
+            model: string;
+            /**
+             * Note
+             * @description Set when results need a caveat, e.g. the demo embedder.
+             */
+            note: string | null;
         };
         /**
          * Extraction
@@ -1927,6 +2106,22 @@ export interface components {
              */
             created_at: string;
         };
+        /** Outcome */
+        Outcome: {
+            price: components["schemas"]["Money-Output"];
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Error Pct
+             * @description (estimate median - sold price) / sold price.
+             */
+            error_pct: number | null;
+            /** Within Range */
+            within_range: boolean | null;
+        };
         /** Page[AuditEventOut] */
         Page_AuditEventOut_: {
             /** Items */
@@ -1975,6 +2170,40 @@ export interface components {
             items: components["schemas"]["StatusChangeOut"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /** Parameters */
+        Parameters: {
+            /** Seed */
+            seed: number;
+            /**
+             * Radius Km
+             * @default 5
+             */
+            radius_km: number;
+            /**
+             * Months
+             * @description Sales closed in this window.
+             * @default 24
+             */
+            months: number;
+            /**
+             * Area Tolerance
+             * @default 0.3
+             */
+            area_tolerance: number;
+            /**
+             * Bedrooms Tolerance
+             * @default 1
+             */
+            bedrooms_tolerance: number;
+            /** Min Comps */
+            min_comps: number;
+            /** Max Comps */
+            max_comps: number;
+            /** Min Simulation Samples */
+            min_simulation_samples: number;
+            /** Simulation Runs */
+            simulation_runs: number;
         };
         /** PasswordChange */
         PasswordChange: {
@@ -2285,6 +2514,55 @@ export interface components {
             /** Errors */
             errors: components["schemas"]["ProblemOut"][];
         };
+        /** SearchHit */
+        SearchHit: {
+            listing: components["schemas"]["ListingOut"];
+            /**
+             * Score
+             * @description Cosine similarity of the query and the listing, -1 to 1.
+             */
+            score: number;
+            explanation: components["schemas"]["Explanation"];
+        };
+        /** SearchResults */
+        SearchResults: {
+            /** Items */
+            items: components["schemas"]["SearchHit"][];
+            /**
+             * Next Cursor
+             * @description Always null: one ranked page.
+             */
+            next_cursor?: null;
+        };
+        /** Simulation */
+        Simulation: {
+            /** Available */
+            available: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Runs */
+            runs: number;
+            /** Seed */
+            seed: number;
+            /**
+             * Samples
+             * @description Comps with both a listed and a closed date.
+             */
+            samples: number;
+            /** Days P10 */
+            days_p10?: number | null;
+            /** Days P50 */
+            days_p50?: number | null;
+            /** Days P90 */
+            days_p90?: number | null;
+            /**
+             * Sold Within
+             * @description Share of simulated runs sold within 30, 60, 90 days.
+             */
+            sold_within?: {
+                [key: string]: number;
+            };
+        };
         /** StatusChangeOut */
         StatusChangeOut: {
             /**
@@ -2364,6 +2642,115 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** ValuationOut */
+        ValuationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "insufficient_data";
+            /** Model Version */
+            model_version: string;
+            /** Simulation Version */
+            simulation_version: string;
+            parameters: components["schemas"]["Parameters"];
+            result: components["schemas"]["ValuationResult"];
+            outcome: components["schemas"]["Outcome"] | null;
+            /**
+             * Requested By User Id
+             * Format: uuid
+             */
+            requested_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Disclaimer
+             * @default Not an appraisal and not a guaranteed sale price. Decision support from sales reported by listing agents, which are not verified.
+             */
+            disclaimer: string;
+        };
+        /**
+         * ValuationRequest
+         * @description Every assumption; all are stored with the result.
+         */
+        ValuationRequest: {
+            /**
+             * Seed
+             * @description Simulation seed. Same seed and comps give the same answer.
+             */
+            seed?: number | null;
+            /**
+             * Radius Km
+             * @default 5
+             */
+            radius_km: number;
+            /**
+             * Months
+             * @description Sales closed in this window.
+             * @default 24
+             */
+            months: number;
+            /**
+             * Area Tolerance
+             * @default 0.3
+             */
+            area_tolerance: number;
+            /**
+             * Bedrooms Tolerance
+             * @default 1
+             */
+            bedrooms_tolerance: number;
+        };
+        /** ValuationResult */
+        ValuationResult: {
+            /**
+             * Currency
+             * @description The listing's currency; every amount here is in it.
+             */
+            currency: string;
+            /**
+             * Reason
+             * @description Why there is no estimate. Set exactly when it is null.
+             */
+            reason: string | null;
+            estimate: components["schemas"]["Estimate"] | null;
+            /** Sample Size */
+            sample_size: number;
+            /**
+             * Data From
+             * @description Oldest comp's closing date.
+             */
+            data_from: string | null;
+            /**
+             * Data To
+             * @description Newest comp's closing date.
+             */
+            data_to: string | null;
+            /** Comps */
+            comps: components["schemas"]["Comp"][];
+            asking: components["schemas"]["AskingSummary"] | null;
+            simulation: components["schemas"]["Simulation"];
+            /**
+             * Offers Reason
+             * @description Why offer outcomes are not simulated.
+             */
+            offers_reason: string;
+            /** Assumptions */
+            assumptions: string[];
         };
     };
     responses: never;
@@ -3938,6 +4325,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_listings_api_v1_listings_search_get: {
+        parameters: {
+            query: {
+                /** @description organisation: your organisation's listings. network: listings other organisations share. all: both. */
+                scope?: "all" | "organisation" | "network";
+                status?: ("draft" | "pending_review" | "active" | "temporarily_off_market" | "sold" | "withdrawn" | "expired")[];
+                listing_type?: ("sale" | "rent") | null;
+                property_type?: ("apartment" | "house" | "villa" | "plot" | "commercial" | "other") | null;
+                city?: string | null;
+                locality?: string | null;
+                min_price?: number | string | null;
+                max_price?: number | string | null;
+                min_bedrooms?: number | null;
+                listing_agent_user_id?: string | null;
+                /** @description Describe the home in your own words. */
+                q: string;
+                include_archived?: boolean;
+                sort?: "newest" | "oldest" | "price_asc" | "price_desc";
+                near_lat?: number | null;
+                near_lon?: number | null;
+                radius_km?: number | null;
+                min_lat?: number | null;
+                min_lon?: number | null;
+                max_lat?: number | null;
+                max_lon?: number | null;
+                limit?: number;
+            };
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -5909,6 +6397,191 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_valuations_api_v1_listings__listing_id__valuations_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    request_valuation_api_v1_listings__listing_id__valuations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValuationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    evaluation_api_v1_valuations_evaluation_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

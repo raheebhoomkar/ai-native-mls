@@ -16,5 +16,16 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional vector store for semantic search (VECTOR_STORE=qdrant).
+  # Start with: docker compose --profile qdrant up -d
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    profiles: ["qdrant"]
+    ports:
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
 volumes:
   postgres-data:
+  qdrant-data:

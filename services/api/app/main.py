@@ -21,7 +21,9 @@ from app.modules.listings.router import listings_router, properties_router
 from app.modules.media.router import listing_media_router, media_router
 from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
+from app.modules.outbox import models as _outbox_models  # noqa: F401  # no routes; registers the table
 from app.modules.review import models as _review_models  # noqa: F401  # no routes; registers tables
+from app.modules.valuation.router import listing_valuations_router, valuations_router
 
 API_PREFIX = "/api/v1"
 
@@ -61,6 +63,8 @@ def create_app() -> FastAPI:
     v1.include_router(listing_import_router)
     v1.include_router(listing_scans_router)
     v1.include_router(compliance_router)
+    v1.include_router(listing_valuations_router)
+    v1.include_router(valuations_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

@@ -12,11 +12,12 @@ Safe to run again: existing users and organisations are left as they are.
 """
 
 import sys
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 import app.main  # noqa: F401  # importing the app registers every module's models on Base
@@ -41,6 +42,8 @@ from app.modules.media import service as media
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext
 from app.modules.organisations.models import Organisation
+from app.modules.outbox.models import OutboxEvent
+from app.modules.search import service as search
 
 # Published in the README on purpose: these accounts exist only on a developer's machine.
 SEED_PASSWORD = "local-dev-password"  # noqa: S105
@@ -194,6 +197,46 @@ COMPLIANCE_REMARKS = (
 )
 
 
+# Fictional reported sales near the lake listing, so a valuation has comparables.
+# (title, sold price, sq ft, beds, days since closing, days on market)
+VALUATION_DEMO: list[tuple[str, str, str, int, int, int]] = [
+    ("[Demo] Sold: 3 BHK, Lake Homes", "23500000", "1180", 3, 40, 35),
+    ("[Demo] Sold: 3 BHK, Hill View", "26800000", "1320", 3, 95, 62),
+    ("[Demo] Sold: 2 BHK, Lake Homes", "19900000", "1050", 2, 150, 28),
+    ("[Demo] Sold: 3 BHK, Orchard Avenue", "24900000", "1240", 3, 210, 47),
+    ("[Demo] Sold: 4 BHK, Hill View", "31500000", "1450", 4, 300, 90),
+    ("[Demo] Sold: 3 BHK, Central Avenue", "22800000", "1150", 3, 420, 54),
+]
+
+
+def _seed_valuation_demo(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    """Sold Sunrise listings in Powai with backdated dates. Added on its own so existing
+    local databases get them too."""
+    if session.scalar(select(Listing.id).where(Listing.title == VALUATION_DEMO[0][0])):
+        return []
+    agent_user = auth.get_user_by_email(session, "sunrise.agent@demo.example.com")
+    approver_user = auth.get_user_by_email(session, "sunrise.admin@demo.example.com")
+    if agent_user is None or approver_user is None:
+        return []
+    org = orgs["Sunrise Realty"]
+    agent = _context(session, agent_user, org)
+    approver = _context(session, approver_user, org)
+    now = datetime.now(UTC)
+    for number, (title, price, sqft, beds, closed_ago, dom) in enumerate(VALUATION_DEMO, 20):
+        row: DemoRow = (
+            title, "sale", price, "network", "sold", "apartment", "Powai", "Mumbai", beds, 2, sqft
+        )  # fmt: skip
+        listing = _demo_listing(session, agent, approver, number, row)
+        closed = now - timedelta(days=closed_ago)
+        # Seed only: backdate the sale so days on market and recency look like real history.
+        session.execute(
+            update(Listing)
+            .where(Listing.id == listing.id)
+            .values(closed_at=closed, listed_at=closed - timedelta(days=dom))
+        )
+    return [f"{len(VALUATION_DEMO)} sold listings for valuation comparables"]
+
+
 def _seed_compliance_demo(session: Session, orgs: dict[str, Organisation]) -> list[str]:
     """One Sunrise listing submitted with remarks the policy flags; its check is queued for
     the worker. Added on its own so existing local databases get it too."""
@@ -304,7 +347,9 @@ def seed(session: Session, password: str = SEED_PASSWORD) -> list[str]:
                 )
     created += _seed_listings(session, orgs)
     created += _seed_compliance_demo(session, orgs)
+    created += _seed_valuation_demo(session, orgs)
     created += _locate_old_properties(session, orgs)
+    created += _index_old_listings(session, orgs)
     return created + _seed_photos(session, orgs)
 
 
@@ -319,6 +364,20 @@ def _locate_old_properties(session: Session, orgs: dict[str, Organisation]) -> l
     for prop in old:
         request_geocode(session, prop)
     return [f"location lookups for {len(old)} older properties"] if old else []
+
+
+def _index_old_listings(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    """Queue search indexing for demo listings seeded before the outbox existed (Sprint 13)."""
+    old = list(
+        session.scalars(
+            select(Listing.id).where(
+                Listing.organisation_id.in_([org.id for org in orgs.values()]),
+                ~select(OutboxEvent.id).where(OutboxEvent.subject_id == Listing.id).exists(),
+            )
+        )
+    )
+    search.enqueue_reindex(session, old)
+    return [f"search indexing for {len(old)} older listings"] if old else []
 
 
 def main(argv: list[str] | None = None) -> int:
