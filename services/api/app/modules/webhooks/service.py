@@ -23,7 +23,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -188,6 +188,33 @@ def list_deliveries(
         .order_by(WebhookDelivery.created_at.desc())
         .limit(50)
     ).all()
+
+
+def list_failed_deliveries(session: Session, ctx: TenantContext) -> Sequence[WebhookDelivery]:
+    """The organisation's 100 newest deliveries that used up their attempts: the dead letters."""
+    return session.scalars(
+        select(WebhookDelivery)
+        .join(WebhookSubscription)
+        .where(
+            WebhookSubscription.organisation_id == ctx.organisation_id,
+            WebhookDelivery.status == "failed",
+        )
+        .order_by(WebhookDelivery.created_at.desc())
+        .limit(100)
+    ).all()
+
+
+def counts(session: Session, since: datetime) -> dict[str, int]:
+    """Platform-wide delivery counts for monitoring."""
+    row = session.execute(
+        select(
+            func.count().filter(WebhookDelivery.status == "pending"),
+            func.count().filter(
+                WebhookDelivery.status == "failed", WebhookDelivery.created_at >= since
+            ),
+        )
+    ).one()
+    return dict(zip(("pending", "failed_recently"), row, strict=True))
 
 
 def get_delivery(session: Session, ctx: TenantContext, delivery_id: UUID) -> WebhookDelivery:

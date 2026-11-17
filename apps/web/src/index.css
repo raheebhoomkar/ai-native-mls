@@ -456,3 +456,138 @@ td.import-problems ul {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+
+/* Dashboard tiles: as many columns as fit, one per row on a phone. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.75rem;
+}
+
+.tile {
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 0.25rem;
+}
+
+.tile h3 {
+  margin-top: 0;
+}
+
+.tile .big {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.tile dl {
+  margin: 0.25rem 0;
+  /* Short label and number: two columns fit even on a phone. */
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 1rem;
+}
+
+.tile dd {
+  margin: 0;
+}
+
+.tile ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.pair {
+  display: contents;
+}
+
+.tile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Hidden until focused by keyboard; then the first thing on the page. */
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  padding: 0.4rem 0.8rem;
+  background: Canvas;
+  color: LinkText;
+  border: 2px solid currentColor;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+#content:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+.offline {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  background: #fff3cd;
+  color: #3d2e00;
+}
+
+@media (prefers-color-scheme: dark) {
+  .offline {
+    background: #4a3b00;
+    color: #fff3cd;
+  }
+}
+
+/* Phones: the navigation folds behind a Menu button. */
+.menu-button {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .menu-button {
+    display: inline-block;
+  }
+
+  .bar nav {
+    display: none;
+    order: 3;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bar nav.open {
+    display: flex;
+  }
+
+  .bar nav a {
+    padding: 0.5rem 0;
+  }
+}
+
+/* Touch targets: at least 44 px tall on coarse pointers. */
+@media (pointer: coarse) {
+  button,
+  select,
+  input {
+    min-height: 2.75rem;
+  }
+}

@@ -17,7 +17,10 @@ test("agent signs in, creates a listing, finds it, submits it, and cleans up", a
   await expect(page.getByText(/Working in Sunrise Realty/)).toBeVisible();
 
   // Create a draft listing on a new property.
-  await page.getByRole("link", { name: "Listings" }).click();
+  await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Listings" })
+    .click();
   await page.getByRole("link", { name: "New listing" }).click();
   await page.getByLabel("Address line 1").fill("1 End-to-End Lane");
   await page.getByLabel("City").fill("Testville");

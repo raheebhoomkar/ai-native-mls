@@ -3,6 +3,7 @@ import { HashRouter, Route, Routes } from "react-router";
 
 import { api, ApiError, describeError, type Me } from "./api";
 import { LoginForm } from "./LoginForm";
+import { OfflineBanner } from "./Offline";
 import { AcceptInvite, ResetPassword } from "./PublicLinks";
 import { SystemStatus } from "./SystemStatus";
 import { Workspace } from "./Workspace";
@@ -73,7 +74,19 @@ export function App() {
     // Hash routing: deep links work on any static host, and one-time link tokens stay in
     // the URL fragment, which browsers do not send to servers.
     <HashRouter>
-      <main>
+      {/* A plain #content link would change the hash route, so focus the target directly. */}
+      <a
+        className="skip-link"
+        href="#content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("content")?.focus();
+        }}
+      >
+        Skip to main content
+      </a>
+      <OfflineBanner />
+      <main id="content" tabIndex={-1}>
         <h1>AI-Native MLS</h1>
         <Routes>
           <Route path="/accept-invite" element={<AcceptInvite />} />

@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 19 of the plan are done (Phases A, B and C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 20 of the plan are done (Phases A, B and C, and S20 of Phase D). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -26,6 +26,8 @@ Sprints 0 to 19 of the plan are done (Phases A, B and C). Per-sprint notes, with
 | Public API | Create API keys with scopes and a rate limit; call the API from another program with a key; safe retries with `Idempotency-Key` | `s17-public-api.md`, `docs/api/developer-guide.md` |
 | Webhooks | Send signed events (listing changed, property changed, workflow finished) to another system; see each delivery, send again | `s18-webhooks.md` |
 | Team and notifications | Assign a listing to a teammate, comment or keep private notes, see the listing's activity; notifications with preferences; see both versions when someone saved first | `s19-collaboration.md` |
+| Dashboard, audit log, app shell | Home page overview that matches your role; audit log with filters; Platform page lists organisations; phone menu, skip link, offline banner; install as an app (production build) | `s20-ux-admin.md` |
+| Operations | Service health on the Platform page (jobs, webhooks, AI failures, alerts); failed webhook deliveries across all webhooks; daily cleanup; backup, restore and restore check; load smoke test; dependency scanning in CI. Runbooks: `docs/operations/runbooks.md` | `s21-hardening.md` |
 
 ## 1. Prerequisites
 
@@ -130,17 +132,34 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17 (end of Phase C): API 334 passed, 3 deselected (the deselected ones are live Gemini tests); web 79 passed; Playwright 2 passed. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17 (end of S21): API 341 passed, 3 deselected (the deselected ones are live Gemini tests); web 90 passed; Playwright 9 passed and 1 skipped against the dev server, 10 passed against the production build. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
-Browser end-to-end tests (app and worker running as in step 3, seed loaded, Chrome installed). One journey: an agent signs in, creates a listing, finds it, submits it for review and archives it. The other: an agent runs the workflow on a new listing, comments, sees the run on the Monitor and archives the listing:
+Browser end-to-end tests (app and worker running as in step 3, seed loaded, Chrome installed):
+
+- `journey.e2e.ts`: an agent signs in, creates a listing, finds it, submits it for review and archives it.
+- `workflow.e2e.ts`: an agent runs the workflow on a new listing, comments, sees the run on the Monitor and archives the listing.
+- `console.e2e.ts`: the dashboard for an administrator and an agent, audit filters, the Platform page, the skip link, phone (390 px) and tablet (768 px) layouts, the offline banner, and the app opening offline. The last one runs only against a production build and is skipped on the dev server.
 
 ```bash
 cd apps/web && pnpm e2e
+# against the production build served by the API (no dev server):
+cd apps/web && pnpm build && cd ../../services/api \
+  && WEB_DIST_DIR=../../apps/web/dist .venv/bin/uvicorn app.main:app --port 8001
+cd apps/web && E2E_BASE_URL=http://localhost:8001 pnpm e2e   # in another terminal
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same API and web checks on pull requests.
+CI (`.github/workflows/ci.yml`) runs the same API and web checks on pull requests, plus a dependency audit (`pip-audit`, `pnpm audit --prod`) and a backup-and-restore check after the browser journeys.
+
+Operations checks (Postgres running; the second needs the API on port 8000 and the seed):
+
+```bash
+DATABASE_URL=postgresql://mls:mls@localhost:5432/mls scripts/backup_restore_check.sh
+python3 scripts/load_smoke.py --email sunrise.agent@demo.example.com --password local-dev-password
+```
+
+Expected: "Restore check passed: <n> tables, same row counts." and a summary line with 0 errors. Details and the restore procedure: `docs/operations/runbooks.md`.
 
 ## 6. Manual test walkthrough
 
@@ -323,11 +342,28 @@ curl -s -b /tmp/mls.cookies 'http://localhost:8000/api/v1/listings?limit=5'
 curl -s -b /tmp/mls.cookies 'http://localhost:8000/api/v1/audit-events?limit=10'
 ```
 
-The audit log has no screen yet; read it through `GET /api/v1/audit-events` as an administrator. API conventions (error envelope, `X-Organisation-ID`, `version` for edits, cursor pagination) are in the README.
+The audit log is also on the Audit page (section 6.15). Filters: `action` (prefix, such as `listing.`), `actor_user_id`, `target_id`. API conventions (error envelope, `X-Organisation-ID`, `version` for edits, cursor pagination) are in the README.
 
 ### 6.14 Phone width
 
-In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column.
+In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column. The navigation folds behind a "Menu" button; choosing a page closes it.
+
+### 6.15 Dashboard, audit log and app shell
+
+1. Sign in as `sunrise.agent@demo.example.com`. Home shows an "Overview": My listings and Sunrise Realty listings by status, Workflows, Unread notifications. There is no review queue tile, no Administration tile and no Audit link.
+2. Sign in as `sunrise.admin@demo.example.com`. Home also shows "Policy findings to review", "Failed background jobs" and an Administration tile (Members, API keys, Webhooks, Audit log). Each link opens its page.
+3. Audit: choose Area "Listings", then a Person. Only their listing events remain. Paste a listing ID into "Record ID" to see everything about that listing. Sign-in events belong to no organisation, so they are not listed here.
+4. Sign in as `platform.admin@demo.example.com` and open Platform. The Organisations table lists every organisation; "Work in it" switches to one and shows its Home.
+5. Keyboard: reload the page and press Tab. "Skip to main content" appears top left; Enter moves focus past the navigation. Every control can be reached with Tab and shows a focus outline.
+6. Offline: in DevTools, Network, choose "Offline". A yellow banner says you are offline, and actions fail with "You are offline. Try again when the connection is back." Switch back to "No throttling": the banner goes.
+7. Install (production build only, see "Running the production image locally"): Chrome's address bar should offer "Install" (not yet checked by hand). After one visit, the app opens with the network off and says it is offline.
+
+### 6.16 Operations (worker must be running)
+
+1. Sign in as `platform.admin@demo.example.com` and open Platform. "Service health" lists anything that needs attention (or "No problems found.") and the numbers for background jobs, webhook deliveries and AI extraction. "Check again" reloads them.
+2. Stop the worker, then upload a photo as `sunrise.agent@demo.example.com`. After 5 minutes, "Check again" on the Platform page shows "Background jobs waiting over 5 minutes". Start the worker: the alert goes once the job has run.
+3. Webhooks dead letters: follow 6.12c up to step 5 and let all 6 attempts fail (about 15 minutes). As `sunrise.admin@demo.example.com`, the Webhooks page's "Failed deliveries" table lists it with the webhook URL. Start the receiver and click "Send again": it is delivered.
+4. Worker log: at most once a day (checked when the worker starts and every hour), it logs "Cleanup finished" with the number of rows deleted.
 
 ## AI with a real key
 

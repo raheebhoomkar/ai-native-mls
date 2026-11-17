@@ -15,11 +15,11 @@ worker dies mid-run.
 
 import logging
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.logging import request_id_var
@@ -120,6 +120,10 @@ def _finish(job: Job, status: str, error: str | None = None) -> None:
 
 def _fail(session: Session, job: Job, error: str) -> None:
     _finish(job, "failed", error)
+    logger.error(
+        "Job failed for good",
+        extra={"alert": "job_failed", "job_id": str(job.id), "kind": job.kind},
+    )
     hook = _failure_handlers.get(job.kind)
     if hook is None:
         return
@@ -149,6 +153,11 @@ def run_one(session: Session) -> bool:
     token = request_id_var.set(job.payload.get("trace_id"))
     try:
         if function is None:
+            # A worker older or newer than the code that queued the job; an operator must look.
+            logger.error(
+                "Unknown job kind",
+                extra={"alert": "unknown_job_kind", "job_id": str(job_id), "kind": job.kind},
+            )
             raise LookupError(f"No handler registered for job kind {job.kind!r}.")
         function(session, job)
     except Exception as error:
@@ -173,6 +182,55 @@ def run_one(session: Session) -> bool:
 
 def get_job(session: Session, job_id: UUID) -> Job | None:
     return session.get(Job, job_id)
+
+
+def count_failed(session: Session, organisation_id: UUID) -> int:
+    query = select(func.count()).where(
+        Job.organisation_id == organisation_id, Job.status == "failed"
+    )
+    return session.scalar(query) or 0
+
+
+def counts(session: Session, since: datetime) -> dict[str, int]:
+    """Platform-wide job counts for monitoring. `overdue`: queued and due over 5 minutes ago."""
+    now = func.now()
+    row = session.execute(
+        select(
+            func.count().filter(Job.status == "queued"),
+            func.count().filter(Job.status == "queued", Job.run_after < now - timedelta(minutes=5)),
+            func.count().filter(Job.status == "running"),
+            func.count().filter(Job.status == "failed", Job.finished_at >= since),
+            func.count().filter(Job.status == "failed", Job.organisation_id.is_(None)),
+        )
+    ).one()
+    return dict(
+        zip(
+            ("queued", "overdue", "running", "failed_recently", "failed_platform"), row, strict=True
+        )
+    )
+
+
+def unknown_kinds(session: Session) -> list[str]:
+    """Kinds of unfinished or failed jobs that no handler in this process runs."""
+    kinds = session.scalars(
+        select(Job.kind).where(Job.status.in_(("queued", "running", "failed"))).distinct()
+    )
+    return sorted(set(kinds) - set(_handlers))
+
+
+def exists_since(session: Session, kind: str, since: datetime) -> bool:
+    """True if a job of `kind` is unfinished or was queued since `since`."""
+    query = select(Job.id).where(
+        Job.kind == kind,
+        or_(Job.status.in_(("queued", "running")), Job.created_at >= since),
+    )
+    return session.scalar(query.limit(1)) is not None
+
+
+def delete_succeeded_before(session: Session, before: datetime) -> int:
+    """Remove old succeeded jobs. Failed jobs are kept: they are the dead letters."""
+    result = session.execute(delete(Job).where(Job.status == "succeeded", Job.finished_at < before))
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 def retry(session: Session, job: Job) -> Job:

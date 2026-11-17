@@ -2,8 +2,9 @@
 
 import { type FormEvent, useState } from "react";
 
-import { api, type Me, tokenLink, useAction } from "./api";
+import { api, type Me, type Organisation, tokenLink, useAction } from "./api";
 import { OneTimeLink } from "./OneTimeLink";
+import { OpsStatus } from "./OpsStatus";
 
 export function Profile({
   me,
@@ -105,9 +106,14 @@ export function Profile({
 }
 
 export function PlatformAdmin({
+  organisations,
   onOrganisationCreated,
+  onWorkIn,
 }: {
+  /** Loaded by the workspace for the organisation menu; null while loading. */
+  organisations: Organisation[] | null;
   onOrganisationCreated: () => void;
+  onWorkIn: (organisationId: string) => void;
 }) {
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"brokerage" | "mls">("brokerage");
@@ -150,6 +156,46 @@ export function PlatformAdmin({
   return (
     <section aria-labelledby="admin-heading">
       <h2 id="admin-heading">Platform administration</h2>
+
+      <OpsStatus />
+
+      <h3 id="orgs-heading">Organisations</h3>
+      {organisations === null ? (
+        <p>Loading…</p>
+      ) : organisations.length === 0 ? (
+        <p>No organisations yet. Create one below.</p>
+      ) : (
+        <div className="table-scroll">
+          <table aria-labelledby="orgs-heading">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Kind</th>
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {organisations.map((o) => (
+                <tr key={o.id}>
+                  <th scope="row">{o.name}</th>
+                  <td>{o.kind === "mls" ? "MLS" : "Brokerage"}</td>
+                  <td>
+                    <button
+                      type="button"
+                      aria-label={`Work in ${o.name}`}
+                      onClick={() => onWorkIn(o.id)}
+                    >
+                      Work in it
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <form onSubmit={createOrganisation} aria-labelledby="create-org-heading">
         <h3 id="create-org-heading">Create an organisation</h3>

@@ -332,6 +332,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ops Status
+         * @description Background jobs, webhook deliveries and AI runs across all organisations.
+         */
+        get: operations["ops_status_api_v1_ops_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/properties": {
         parameters: {
             query?: never;
@@ -1247,6 +1284,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/webhooks/deliveries/failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Failed Deliveries
+         * @description Dead letters: the 100 newest deliveries, across all webhooks, that used up their attempts.
+         */
+        get: operations["list_failed_deliveries_api_v1_webhooks_deliveries_failed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/webhooks/deliveries/{delivery_id}/redeliver": {
         parameters: {
             query?: never;
@@ -1541,6 +1598,13 @@ export interface components {
             /** Can Review */
             can_review: boolean;
         };
+        /** AiCounts */
+        AiCounts: {
+            /** Failed Recently */
+            failed_recently: number;
+            /** Last Error */
+            last_error: string | null;
+        };
         /** ApiKeyIn */
         ApiKeyIn: {
             /** Name */
@@ -1691,6 +1755,10 @@ export interface components {
             occurred_at: string;
             /** Actor User Id */
             actor_user_id: string | null;
+            /** Actor Name */
+            actor_name?: string | null;
+            /** Actor Email */
+            actor_email?: string | null;
             /** Organisation Id */
             organisation_id: string | null;
             /** Action */
@@ -2069,6 +2137,29 @@ export interface components {
             assignable_roles: ("mls_admin" | "brokerage_admin" | "broker" | "agent" | "api_consumer")[];
         };
         /**
+         * DashboardOut
+         * @description A part is null when your permissions do not cover it.
+         */
+        DashboardOut: {
+            listings: components["schemas"]["ListingCounts"] | null;
+            /**
+             * Workflows
+             * @description Workflow runs by status.
+             */
+            workflows: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Review Queue
+             * @description Policy findings waiting for you to review.
+             */
+            review_queue: number | null;
+            /** Failed Jobs */
+            failed_jobs: number | null;
+            /** Unread Notifications */
+            unread_notifications: number;
+        };
+        /**
          * DecisionIn
          * @description An editor's decision on one suggestion. `value` is required only for `edited`.
          */
@@ -2105,6 +2196,13 @@ export interface components {
              * Format: date-time
              */
             decided_at: string;
+        };
+        /** DeliveryCounts */
+        DeliveryCounts: {
+            /** Pending */
+            pending: number;
+            /** Failed Recently */
+            failed_recently: number;
         };
         /** DeliveryOut */
         DeliveryOut: {
@@ -2505,6 +2603,33 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** JobCounts */
+        JobCounts: {
+            /** Queued */
+            queued: number;
+            /**
+             * Overdue
+             * @description Queued jobs due more than 5 minutes ago.
+             */
+            overdue: number;
+            /** Running */
+            running: number;
+            /**
+             * Failed Recently
+             * @description Jobs that failed for good in the last 24 hours.
+             */
+            failed_recently: number;
+            /**
+             * Failed Platform
+             * @description Failed jobs that belong to no organisation.
+             */
+            failed_platform: number;
+            /**
+             * Unknown Kinds
+             * @description Job kinds that no handler runs.
+             */
+            unknown_kinds: string[];
+        };
         /** JobOut */
         JobOut: {
             /**
@@ -2536,6 +2661,23 @@ export interface components {
             run_after: string;
             /** Finished At */
             finished_at: string | null;
+        };
+        /** ListingCounts */
+        ListingCounts: {
+            /**
+             * Organisation
+             * @description The organisation's listings that are not archived, by status.
+             */
+            organisation: {
+                [key: string]: number;
+            };
+            /**
+             * Mine
+             * @description Listings where you are the agent, by status.
+             */
+            mine: {
+                [key: string]: number;
+            };
         };
         /** ListingCreate */
         ListingCreate: {
@@ -2863,6 +3005,22 @@ export interface components {
             items: components["schemas"]["NotificationOut"][];
             /** Unread */
             unread: number;
+        };
+        /**
+         * OpsStatusOut
+         * @description Platform-wide numbers. `alerts` says in plain words what needs an operator.
+         */
+        OpsStatusOut: {
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            jobs: components["schemas"]["JobCounts"];
+            webhook_deliveries: components["schemas"]["DeliveryCounts"];
+            ai: components["schemas"]["AiCounts"];
+            /** Alerts */
+            alerts: string[];
         };
         /** OrganisationCreate */
         OrganisationCreate: {
@@ -4522,6 +4680,10 @@ export interface operations {
     list_audit_events_api_v1_audit_events_get: {
         parameters: {
             query?: {
+                /** @description Action prefix, such as `listing.`. */
+                action?: string | null;
+                actor_user_id?: string | null;
+                target_id?: string | null;
                 limit?: number;
                 cursor?: string | null;
             };
@@ -4570,6 +4732,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ops_status_api_v1_ops_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsStatusOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -8671,6 +8923,76 @@ export interface operations {
             path: {
                 subscription_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_failed_deliveries_api_v1_webhooks_deliveries_failed_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

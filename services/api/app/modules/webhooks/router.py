@@ -153,6 +153,12 @@ def list_deliveries(
     return [_delivery_out(d) for d in service.list_deliveries(session, subscription)]
 
 
+@router.get("/deliveries/failed", responses=_ERRORS)
+def list_failed_deliveries(session: SessionDep, ctx: CanManage) -> list[DeliveryOut]:
+    """Dead letters: the 100 newest deliveries, across all webhooks, that used up their attempts."""
+    return [_delivery_out(d) for d in service.list_failed_deliveries(session, ctx)]
+
+
 @router.post("/deliveries/{delivery_id}/redeliver", status_code=202, responses=_ERRORS)
 def redeliver(
     delivery_id: UUID, request: Request, session: SessionDep, ctx: CanManage

@@ -10,11 +10,12 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.modules.apikeys.models import ApiKey, ApiKeyUsage
+from app.modules.apikeys.middleware import KEEP_FOR
+from app.modules.apikeys.models import ApiKey, ApiKeyUsage, IdempotencyRecord
 from app.modules.auth.models import User
 from app.modules.auth.service import hash_token
 from app.modules.organisations import service as organisations
@@ -86,6 +87,18 @@ def used_in_last_minute(session: Session, key_id: UUID) -> int:
         )
         or 0
     )
+
+
+def delete_expired(session: Session, usage_before: datetime) -> dict[str, int]:
+    """Remove idempotency records past their life and usage rows older than `usage_before`."""
+    records = session.execute(
+        delete(IdempotencyRecord).where(IdempotencyRecord.created_at < datetime.now(UTC) - KEEP_FOR)
+    )
+    usage = session.execute(delete(ApiKeyUsage).where(ApiKeyUsage.at < usage_before))
+    return {
+        "idempotency_records": int(getattr(records, "rowcount", 0) or 0),
+        "api_key_usage": int(getattr(usage, "rowcount", 0) or 0),
+    }
 
 
 def authenticate(session: Session, token: str) -> tuple[ApiKey, User, str]:

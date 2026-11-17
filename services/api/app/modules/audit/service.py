@@ -62,9 +62,22 @@ def count_recent(
 
 
 def list_for_organisation(
-    session: Session, organisation_id: UUID, page: PageParams
+    session: Session,
+    organisation_id: UUID,
+    page: PageParams,
+    *,
+    action: str | None = None,
+    actor_user_id: UUID | None = None,
+    target_id: str | None = None,
 ) -> tuple[Sequence[AuditEvent], str | None]:
+    """Newest first. `action` matches a prefix, such as `listing.`."""
     stmt = select(AuditEvent).where(AuditEvent.organisation_id == organisation_id)
+    if action:
+        stmt = stmt.where(AuditEvent.action.startswith(action, autoescape=True))
+    if actor_user_id is not None:
+        stmt = stmt.where(AuditEvent.actor_user_id == actor_user_id)
+    if target_id:
+        stmt = stmt.where(AuditEvent.target_id == target_id)
     return paginate(session, stmt, page, sort=AuditEvent.occurred_at, id_column=AuditEvent.id)
 
 
