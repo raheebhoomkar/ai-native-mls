@@ -33,7 +33,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://mls:mls@localhost:5432/mls
       ENVIRONMENT: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.15"
@@ -52,7 +52,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: apps/web/package.json
@@ -71,7 +71,7 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.15"
@@ -108,7 +108,7 @@ jobs:
       E2E_PASSWORD: ci-e2e-password-123
       E2E_BASE_URL: http://localhost:8000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -t ai-native-mls .
       - name: Start the app
         run: >-
