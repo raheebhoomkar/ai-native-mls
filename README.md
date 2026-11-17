@@ -2,11 +2,34 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Sprint 6 adds listing photos: upload with validation, thumbnails made by a background job worker, signed download links, removal with a retention period, and local-disk or S3-compatible storage. Sprints 7 and 8 add AI photo analysis: a vision model (Gemini, or a labelled demo provider when no key is set) suggests observable features from the photos, and an editor accepts, edits or rejects each one on the listing page. Accepted values are kept as confirmed features; AI never changes the fields an agent entered. Sprint 9 adds photo redaction: faces are found locally with OpenCV and plates, phone numbers, watermarks and signs by the vision model; a blurred copy is stored beside the original, and an editor approves or rejects it. Anything not checked is shown as not checked. Sprint 10 adds CSV import with RESO-aligned field names and Indian formats, field-level errors and a record of where each imported listing came from. Sprint 11 adds policy checks of listing titles and remarks against an illustrative India house policy (word rules plus a Gemini check): each finding has the phrase, rule, severity, confidence and a suggested rewrite; approvers accept, dismiss or request edits from a review queue, and the listing agent can appeal once. A check is decision support, never a statement that a listing is lawful. Sprint 12 adds maps: properties are located by a background geocoding job (a labelled demo geocoder, or OpenStreetMap Nominatim), each point shows its source and how exact it is, an editor can set it by hand, and listings can be shown on a MapLibre map and searched by radius or map area. Sprint 13 adds semantic search: an agent describes the home in their own words and listings are ranked by similarity (Gemini embeddings, or a labelled word-matching demo embedder), after the usual filters and sharing rules are applied, with the reason for each match. Listing changes reach the index through a transactional outbox and a background job; vectors live in Postgres or Qdrant. Sprint 14 adds valuation, which completes Phase B: an estimated range from comparable sales that agents reported (price per sq ft, with the comps, sample size, dates and every assumption shown), asking prices kept apart, a seeded and reproducible days-on-market simulation, an "insufficient data" state instead of a guess, a "not an appraisal" disclaimer, and accuracy tracked against the price a listing later sells for.
+**Status:** all 23 sprints (S0 to S22) are built and pass their checks locally. Not deployed yet.
 
-**Run and test it:** [docs/HOW_TO_RUN.md](docs/HOW_TO_RUN.md) has setup, demo accounts, automated checks and a feature-by-feature test walkthrough.
+**Live demo:** not deployed yet. Deploy to Vercel with [docs/deployment/vercel.md](docs/deployment/vercel.md), then put the URL here. Demo accounts are listed below; on a deployed demo their password is the `SEED_PASSWORD` set in the host, never in this repository.
 
-**Live demo:** not deployed yet. The steps are in [docs/deployment/render.md](docs/deployment/render.md).
+| Read | For |
+|---|---|
+| [docs/HOW_TO_RUN.md](docs/HOW_TO_RUN.md) | Setup, demo accounts, automated checks, and a feature-by-feature test walkthrough |
+| [docs/DEMO.md](docs/DEMO.md) | A 30-minute guided demo of every required feature, from draft listing to sold |
+| [docs/architecture.md](docs/architecture.md) | System diagram, modules, agent workflow diagram, ERD, API docs |
+| [docs/known-limitations.md](docs/known-limitations.md) | What is not verified or not built, and the roadmap |
+| [docs/deployment/vercel.md](docs/deployment/vercel.md) | Deploying (Vercel; Render in `render.md`) |
+| [docs/operations/runbooks.md](docs/operations/runbooks.md) | Monitoring, incidents, backup and restore, retention |
+| [docs/api/developer-guide.md](docs/api/developer-guide.md) | API keys, webhooks, sample client |
+| [docs/handover-checklist.md](docs/handover-checklist.md) | Release tag and transfer steps |
+
+## Features
+
+- **Organisations and roles:** MLS, brokerages and agents as tenants; role-based permissions; invitations by one-time link; platform administration; audit log with filters.
+- **Listings:** properties and listings with a draft, review, active, sold and archived lifecycle; search, filters, sharing between organisations; CSV import with Indian formats and provenance; edit conflicts shown side by side.
+- **Photos and AI:** uploads with thumbnails; AI suggestions of features seen in the photos, each accepted, edited or rejected by a person; privacy redaction (faces, plates, phone numbers, watermarks, signs) into an approved copy. AI never changes what the agent entered.
+- **Policy checks:** listing text checked against an illustrative India policy (word rules plus an AI check), with a review queue, decisions and appeals. Decision support, never a legal opinion.
+- **Location, search, valuation:** geocoding with source and precision, map and radius search; semantic search with the reason for each match; valuation from reported comparable sales with every assumption shown, or "insufficient data".
+- **Agent workflow:** a LangGraph workflow (locate, read photos, policy check, human review, index, value) that pauses for people and blocks publication until they decide; cancel, retry, monitor.
+- **Integration:** public API with scoped, rate-limited keys and idempotent retries; signed webhooks with retries and dead letters.
+- **Team and app:** assignments, comments, private notes, notifications; role-aware dashboard; installable, responsive web app with offline notice.
+- **Operations:** health checks, service health with alerts, daily cleanup, backup and restore scripts, load smoke test, dependency audit in CI.
+
+Without any API key, every AI feature runs on a labelled demo adapter, so the whole app works offline. A `GEMINI_API_KEY` switches on Google Gemini.
 
 No email is sent by the system. Invitation and password-reset links are shown once to the administrator, who passes them on.
 
@@ -15,11 +38,14 @@ No email is sent by the system. Invitation and password-reset links are shown on
 | Path | Contents |
 |---|---|
 | `services/api` | FastAPI modular monolith. Shared code in `app/core`, one directory per feature in `app/modules`. |
-| `apps/web` | React + Vite web app (responsive; PWA planned). |
+| `apps/web` | React + Vite web app (responsive, installable PWA). |
 | `docs/decisions` | Architecture decision records. |
 | `docs/security` | Role and permission matrix. |
 | `docs/deployment` | How to deploy the demo. |
-| `Dockerfile`, `render.yaml` | The deployable image (API plus web app) and the Render Blueprint. |
+| `vercel.json`, `services/api/Dockerfile` | Vercel project: the web app on the CDN and the API as a container (ADR 0007). |
+| `Dockerfile`, `render.yaml` | The single-container image (API plus web app) and the Render Blueprint. |
+| `scripts` | Backup, restore, restore check, load smoke test, ERD generator. |
+| `examples` | Sample API client and webhook receiver. |
 | `docs/modules` | Per-sprint implementation notes and acceptance results. |
 | `docker-compose.yml` | Local Postgres only. |
 
@@ -105,6 +131,11 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 | `GEMINI_API_KEY` | no | unset | Google Gemini key for photo extraction and for finding plates, phone numbers, watermarks and signs to redact. Unset: extraction answers with output labelled `[Demo]`, and redaction blurs faces only and marks the rest as not checked (ADR 0005). The free tier may use what you send to improve Google's models, so send demo photos only (ADR 0004) |
 | `GEMINI_MODEL` | no | `gemini-3.5-flash` | Gemini model name |
 | `AI_TIMEOUT_SECONDS` | no | `90` | Time limit for one provider call |
+| `EMBEDDER`, `GEMINI_EMBEDDING_MODEL` | no | `demo`, `gemini-embedding-001` | Semantic search: `demo` (word matching, labelled) or `gemini` (needs the key; re-index after switching) |
+| `VECTOR_STORE`, `QDRANT_URL`, `QDRANT_API_KEY` | no | `postgres` | Where listing vectors live: `postgres` or `qdrant` |
+| `GEOCODER`, `NOMINATIM_URL`, `GEOCODER_USER_AGENT` | no | `demo` | `demo` (known city and locality centres, labelled) or `nominatim` (OpenStreetMap; set a user agent with a contact) |
+| `CRON_SECRET` | on Vercel | unset | Turns on `GET /api/v1/ops/run-jobs` (runs due background jobs for up to 50 s) for callers sending `Authorization: Bearer <CRON_SECRET>` (16+ characters). Unset: that route answers 404 |
+| `RUN_WORKER` | no | `true` | Container start script only: `false` keeps the in-container worker off (set in the Vercel image) |
 | `FORWARDED_ALLOW_IPS` | no | `127.0.0.1` | Reverse proxies trusted for the client address (container start script) |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | no | `mls`, `mls`, `mls`, `5432` | Used only by `docker-compose.yml` |
 
@@ -141,7 +172,7 @@ pnpm e2e
   }
   ```
 
-- Browser sign-in uses an httpOnly session cookie set by `POST /api/v1/auth/login`. API keys for third-party clients come in a later sprint.
+- Browser sign-in uses an httpOnly session cookie set by `POST /api/v1/auth/login`. Other systems use API keys instead (`Authorization: Bearer <key>`, see `docs/api/developer-guide.md`).
 - Tenant-scoped endpoints act in one organisation. Send `X-Organisation-ID`; it may be omitted when you belong to exactly one organisation. Asking for an organisation you cannot access returns 403 whether or not it exists.
 - Money and areas are strings holding exact decimals, with a currency code or unit: `{ "amount": "25000000.00", "currency": "INR" }`.
 - Editable records carry a `version`. Send the version you read with every change; `409 version_conflict` means someone else changed it first.
@@ -165,4 +196,4 @@ cd services/api
 
 ## Known limitations
 
-See the notes per sprint: [Sprint 0](docs/modules/s0-foundation.md), [Sprint 1](docs/modules/s1-auth-tenancy.md), [Sprint 2](docs/modules/s2-invitations-admin.md), [Sprint 3](docs/modules/s3-listings-backend.md), [Sprint 4](docs/modules/s4-listing-ui.md), [Sprint 5](docs/modules/s5-early-demo.md), [Sprint 6](docs/modules/s6-media-jobs.md), [Sprint 7](docs/modules/s7-ai-extraction.md), [Sprint 8](docs/modules/s8-ai-review.md), [Sprint 9](docs/modules/s9-redaction.md), [Sprint 10](docs/modules/s10-import.md), [Sprint 11](docs/modules/s11-compliance.md), [Sprint 12](docs/modules/s12-geospatial.md), [Sprint 13](docs/modules/s13-semantic-search.md), [Sprint 14](docs/modules/s14-valuation.md).
+Summary and roadmap: [docs/known-limitations.md](docs/known-limitations.md). Each sprint note in [docs/modules](docs/modules) has the full list for its feature.

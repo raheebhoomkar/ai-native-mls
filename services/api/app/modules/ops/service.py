@@ -4,6 +4,7 @@ No tables of its own; it reads other modules through their services.
 """
 
 import logging
+import time
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
@@ -22,6 +23,8 @@ CLEANUP_KIND = "ops.cleanup"
 CLEANUP_EVERY = timedelta(hours=24)
 KEEP_USAGE_FOR = timedelta(days=90)
 KEEP_SUCCEEDED_JOBS_FOR = timedelta(days=30)
+# How long one GET /ops/run-jobs call keeps taking jobs; below a serverless request timeout.
+RUN_JOBS_SECONDS = 50.0
 # Any fixed number; workers hold it while deciding whether to queue the cleanup.
 _CLEANUP_LOCK = 2_100_000_021
 
@@ -86,3 +89,17 @@ def ensure_cleanup_scheduled(session: Session) -> Job | None:
         job = jobs.enqueue(session, CLEANUP_KIND)
     session.commit()
     return job
+
+
+def run_jobs(session: Session, seconds: float = RUN_JOBS_SECONDS) -> int:
+    """Queue the cleanup if due, then run due jobs until none is left or `seconds` pass.
+
+    For hosts without an always-on worker: a scheduler calls this over HTTP. A job still
+    running at the deadline finishes first. Returns how many jobs ran, whatever their outcome.
+    """
+    ensure_cleanup_scheduled(session)
+    deadline = time.monotonic() + seconds
+    ran = 0
+    while time.monotonic() < deadline and jobs.run_one(session):
+        ran += 1
+    return ran

@@ -54,8 +54,11 @@ class Settings(BaseSettings):
     vector_store: Literal["postgres", "qdrant"] = "postgres"
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: SecretStr | None = None
+    # Lets a scheduler such as Vercel Cron run background jobs over HTTP: GET /ops/run-jobs
+    # with "Authorization: Bearer <CRON_SECRET>". Unset: that route answers 404.
+    cron_secret: SecretStr | None = Field(default=None, min_length=16)
 
-    @field_validator("gemini_api_key", "qdrant_api_key", mode="before")
+    @field_validator("gemini_api_key", "qdrant_api_key", "cron_secret", mode="before")
     @classmethod
     def _blank_is_none(cls, value: object) -> object:
         return value or None

@@ -2,11 +2,13 @@
 
 This guide is for anyone who clones the repository, and for the AI coding assistant they use. It says how to start the app, which accounts to sign in with, how to run the automated checks, and how to test every feature by hand with the result you should see.
 
+**To show the app to someone**, follow the guided [demo script](DEMO.md) (about 30 minutes, every required feature, with the demo accounts). **To deploy it**, see [deployment/vercel.md](deployment/vercel.md). Architecture and diagrams: [architecture.md](architecture.md). Limits and roadmap: [known-limitations.md](known-limitations.md).
+
 Commands are for macOS or Linux. Run them from the repository root unless a step says otherwise. Each step lists what you should see; if you see something else, check [Troubleshooting](#troubleshooting).
 
 ## What is built
 
-Sprints 0 to 20 of the plan are done (Phases A, B and C, and S20 of Phase D). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+All 23 sprints of the plan (S0 to S22, Phases A to D) are done. Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`; the newest one (`s22-handover.md`) has the final report.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -27,6 +29,7 @@ Sprints 0 to 20 of the plan are done (Phases A, B and C, and S20 of Phase D). Pe
 | Webhooks | Send signed events (listing changed, property changed, workflow finished) to another system; see each delivery, send again | `s18-webhooks.md` |
 | Team and notifications | Assign a listing to a teammate, comment or keep private notes, see the listing's activity; notifications with preferences; see both versions when someone saved first | `s19-collaboration.md` |
 | Dashboard, audit log, app shell | Home page overview that matches your role; audit log with filters; Platform page lists organisations; phone menu, skip link, offline banner; install as an app (production build) | `s20-ux-admin.md` |
+| Hosting and handover | Deploy to Vercel (web on the CDN, API as a container, jobs through a protected job-runner URL); demo script, architecture, workflow and data diagrams, limits and roadmap, handover checklist | `s22-handover.md` |
 | Operations | Service health on the Platform page (jobs, webhooks, AI failures, alerts); failed webhook deliveries across all webhooks; daily cleanup; backup, restore and restore check; load smoke test; dependency scanning in CI. Runbooks: `docs/operations/runbooks.md` | `s21-hardening.md` |
 
 ## 1. Prerequisites
@@ -94,6 +97,8 @@ Without the worker the app still works, but photos stay "Processing", and AI and
 
 Every seeded user has the password `local-dev-password`. These accounts exist only in your local database.
 
+On a deployed demo the same accounts exist, but their password is the `SEED_PASSWORD` value set in the host (Vercel: Settings > Environment Variables). It is deliberately not in the repository.
+
 | Email | Role | Use it to test |
 |---|---|---|
 | `platform.admin@demo.example.com` | Platform administrator | Platform page, creating organisations, password reset links |
@@ -132,7 +137,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17 (end of S21): API 341 passed, 3 deselected (the deselected ones are live Gemini tests); web 90 passed; Playwright 9 passed and 1 skipped against the dev server, 10 passed against the production build. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17 (end of S22): API 342 passed, 3 deselected (the deselected ones are live Gemini tests); web 90 passed; Playwright 9 passed and 1 skipped against the dev server, 10 passed against the production build. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
@@ -365,6 +370,13 @@ In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideway
 3. Webhooks dead letters: follow 6.12c up to step 5 and let all 6 attempts fail (about 15 minutes). As `sunrise.admin@demo.example.com`, the Webhooks page's "Failed deliveries" table lists it with the webhook URL. Start the receiver and click "Send again": it is delivered.
 4. Worker log: at most once a day (checked when the worker starts and every hour), it logs "Cleanup finished" with the number of rows deleted.
 
+### 6.17 Job runner over HTTP (how jobs run on Vercel)
+
+1. Stop the worker (terminal 2). Add `CRON_SECRET=local-cron-secret-123` to `.env` and restart the API.
+2. As `sunrise.agent@demo.example.com`, upload a photo. It stays "Processing".
+3. `curl -s http://localhost:8000/api/v1/ops/run-jobs` gives 401 `invalid_cron_secret`. With the secret: `curl -s -H "Authorization: Bearer local-cron-secret-123" http://localhost:8000/api/v1/ops/run-jobs` gives `{"ran":<n>}` and the thumbnail appears on the next refresh.
+4. Remove `CRON_SECRET` from `.env` and restart: the route answers 404. Start the worker again.
+
 ## AI with a real key
 
 Put `GEMINI_API_KEY=...` in `.env` and restart the API and the worker. Get a key at https://aistudio.google.com/apikey. The free tier may use what you send to improve Google's models, so upload demo photos only. Photos are sent without camera or GPS data. Decisions about the provider are in `docs/decisions/0004-*.md` and `0005-*.md`.
@@ -386,14 +398,17 @@ To use Qdrant instead of Postgres for vectors locally: `docker compose --profile
 | Photos stop loading after an API restart | Download links are signed with a per-process key in development. Reload the page. |
 | Sign-in works but lists are empty | Seed not loaded: `cd services/api && .venv/bin/python -m app.seed`. |
 | Web type errors after pulling API changes | `cd apps/web && pnpm gen:api` (API code must be importable; Postgres running). |
+| `Multiple head revisions are present` from Alembic or pytest | Copies of migration files named `* 2.py` (iCloud conflict copies) are in `services/api/migrations/versions`. Move them out of the repository. |
 | `alembic check` reports changes | A model changed without a migration. `alembic revision --autogenerate -m "..."`, review it, `alembic upgrade head`. |
 
 ## Running the production image locally
 
-The deployable image serves the API and the built web app on one port. Steps are in `docs/deployment/render.md` ("Running the same image locally").
+- Vercel's API image (`services/api/Dockerfile`, API only): "Running the API image locally" in `docs/deployment/vercel.md`.
+- Render's image (repository-root `Dockerfile`, API plus the built web app on one port): "Running the same image locally" in `docs/deployment/render.md`.
 
 ## Notes for AI assistants working on this repository
 
+- Do not commit files named `* 2.*`: they are iCloud conflict copies, and copies of migration files make Alembic report several heads.
 - Start here, then read the newest `docs/modules/s<N>-*.md`. Its status line, chunk checklist and "Next" section say what is done and what is next. Each finished sprint's "Shared pieces later sprints must reuse" table lists the code to reuse.
 - To verify the app: run section 5, then walk section 6 in a browser. Report each step as passed or failed with what you saw. Do not report a step as passed without running it.
 - Use only the seeded `[Demo]` data and demo photos. Do not upload real people's photos or real listings, and do not send them to Gemini.

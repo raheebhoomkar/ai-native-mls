@@ -1,10 +1,11 @@
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import func, select
 
 import app.main  # noqa: F401  # importing the app registers every module's models on Base
 from app.core.config import get_settings
-from app.core.db import Base, get_engine
+from app.core.db import STARTUP_LOCK, Base, get_engine
 
 config = context.config
 if config.config_file_name is not None:
@@ -29,6 +30,7 @@ def run_migrations_online() -> None:
     with get_engine().connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
         with context.begin_transaction():
+            connection.execute(select(func.pg_advisory_xact_lock(STARTUP_LOCK)))
             context.run_migrations()
 
 

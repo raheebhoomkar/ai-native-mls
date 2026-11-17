@@ -1,10 +1,13 @@
+import hmac
 from datetime import datetime
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 from pydantic import BaseModel, Field
 
+from app.core.config import get_settings
 from app.core.db import SessionDep
-from app.core.errors import ErrorResponse
+from app.core.errors import AppError, ErrorResponse
 from app.modules.auth.deps import PlatformAdmin
 from app.modules.ops import service
 
@@ -44,3 +47,25 @@ class OpsStatusOut(BaseModel):
 def ops_status(session: SessionDep, _admin: PlatformAdmin) -> OpsStatusOut:
     """Background jobs, webhook deliveries and AI runs across all organisations."""
     return OpsStatusOut.model_validate(service.status(session))
+
+
+class RunJobsOut(BaseModel):
+    ran: int = Field(description="Jobs run in this call, whatever their outcome.")
+
+
+@router.get("/run-jobs", responses={code: {"model": ErrorResponse} for code in (401, 404)})
+def run_jobs(
+    session: SessionDep, authorization: Annotated[str | None, Header()] = None
+) -> RunJobsOut:
+    """Run due background jobs for up to 50 seconds, for a scheduler such as Vercel Cron.
+
+    Needs `Authorization: Bearer <CRON_SECRET>`. Answers 404 when `CRON_SECRET` is not set,
+    since the host then runs `python -m app.worker` instead.
+    """
+    secret = get_settings().cron_secret
+    if secret is None:
+        raise AppError(404, "not_found", "Not found.")
+    expected = f"Bearer {secret.get_secret_value()}".encode()
+    if not hmac.compare_digest((authorization or "").encode(), expected):
+        raise AppError(401, "invalid_cron_secret", "A valid cron secret is required.")
+    return RunJobsOut(ran=service.run_jobs(session))

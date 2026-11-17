@@ -1,0 +1,16 @@
+# Not needed to build either Vercel service (see vercel.json).
+.git
+.env
+.env.*
+**/.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.egg-info
+**/test-results
+**/playwright-report
+var
+services/api/tests

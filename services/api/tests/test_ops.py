@@ -8,9 +8,11 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.modules.apikeys.models import ApiKeyUsage, IdempotencyRecord
 from app.modules.auth.models import User
 from app.modules.jobs import service as jobs
@@ -170,3 +172,34 @@ def test_failed_deliveries_list_is_per_organisation(
     assert response.status_code == 200
     assert [d["id"] for d in response.json()] == [str(failed_a.id)]
     assert login_as(agent_a).get(FAILED).status_code == 403
+
+
+RUN_JOBS = "/api/v1/ops/run-jobs"
+ticked: list[str] = []
+
+
+@jobs.handler("test.ops_tick")
+def _tick(session: Session, job: Job) -> None:
+    ticked.append(job.payload["name"])
+
+
+def test_run_jobs_needs_the_cron_secret_and_runs_due_jobs(
+    db: Session, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ticked.clear()
+    assert client.get(RUN_JOBS).status_code == 404  # no CRON_SECRET: the route is off
+
+    monkeypatch.setattr(get_settings(), "cron_secret", SecretStr("s" * 32))
+    assert client.get(RUN_JOBS).status_code == 401
+    wrong = client.get(RUN_JOBS, headers={"Authorization": "Bearer " + "x" * 32})
+    assert wrong.status_code == 401
+
+    job = jobs.enqueue(db, "test.ops_tick", payload={"name": "due"})
+    db.commit()
+    response = client.get(RUN_JOBS, headers={"Authorization": "Bearer " + "s" * 32})
+    assert response.status_code == 200
+    assert response.json()["ran"] >= 1
+    assert ticked == ["due"]
+    db.refresh(job)
+    assert job.status == "succeeded"
+    assert jobs.exists_since(db, ops.CLEANUP_KIND, _ago(minutes=1))  # cleanup queued too

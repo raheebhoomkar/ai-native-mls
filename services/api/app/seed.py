@@ -17,12 +17,12 @@ from io import BytesIO
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 import app.main  # noqa: F401  # importing the app registers every module's models on Base
 from app.core.config import get_settings
-from app.core.db import get_engine
+from app.core.db import STARTUP_LOCK, get_engine
 from app.core.errors import AppError
 from app.modules.auth import service as auth
 from app.modules.auth.models import User
@@ -395,6 +395,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         password = settings.seed_password.get_secret_value()
     with Session(get_engine()) as session, session.begin():
+        session.execute(select(func.pg_advisory_xact_lock(STARTUP_LOCK)))
         created = seed(session, password)
     print("\n".join(f"Created {item}" for item in created) or "Nothing to create.")
     if password == SEED_PASSWORD:

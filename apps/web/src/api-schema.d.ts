@@ -369,6 +369,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/run-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Run Jobs
+         * @description Run due background jobs for up to 50 seconds, for a scheduler such as Vercel Cron.
+         *
+         *     Needs `Authorization: Bearer <CRON_SECRET>`. Answers 404 when `CRON_SECRET` is not set,
+         *     since the host then runs `python -m app.worker` instead.
+         */
+        get: operations["run_jobs_api_v1_ops_run_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/properties": {
         parameters: {
             query?: never;
@@ -3460,6 +3483,14 @@ export interface components {
             /** Errors */
             errors: components["schemas"]["ProblemOut"][];
         };
+        /** RunJobsOut */
+        RunJobsOut: {
+            /**
+             * Ran
+             * @description Jobs run in this call, whatever their outcome.
+             */
+            ran: number;
+        };
         /** SearchHit */
         SearchHit: {
             listing: components["schemas"]["ListingOut"];
@@ -4822,6 +4853,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    run_jobs_api_v1_ops_run_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunJobsOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

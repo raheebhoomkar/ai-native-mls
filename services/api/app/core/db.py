@@ -8,6 +8,10 @@ from sqlalchemy.orm import DeclarativeBase, Session
 
 from app.core.config import get_settings
 
+# Any fixed number. Migrations and the demo seed hold it, so containers starting at the same
+# moment (serverless cold starts) run them one after another.
+STARTUP_LOCK = 2_100_000_022
+
 
 class Base(DeclarativeBase):
     """Every module's models inherit from this so Alembic sees one metadata."""
