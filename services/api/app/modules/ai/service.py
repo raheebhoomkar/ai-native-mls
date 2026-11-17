@@ -1,9 +1,10 @@
-"""AI runs on a listing's photos. Suggestions are stored on the run only; nothing here writes
-to listing fields (an editor accepts suggestions in Sprint 8).
+"""AI runs on a listing's photos. Suggestions are stored on the run only. An editor reviews
+each one; accepted or edited values become listing features. Listing columns are never written.
 """
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import select
@@ -20,11 +21,14 @@ from app.modules.ai.providers import (
     ProviderError,
     VisionProvider,
 )
+from app.modules.ai.schemas import Extraction, Feature
 from app.modules.jobs import service as jobs
 from app.modules.jobs.models import Job
 from app.modules.listings import service as listings
 from app.modules.media import service as media
 from app.modules.organisations.deps import TenantContext
+from app.modules.review import service as review
+from app.modules.review.models import ReviewDecision
 
 AGENT = "vision_extraction"
 AGENT_VERSION = "1"
@@ -32,6 +36,9 @@ MAX_PHOTOS = 10
 MAX_ATTEMPTS = 3
 # Malformed output gets one more try, not the full set of attempts.
 MALFORMED_MAX_ATTEMPTS = 2
+REVIEW_SUBJECT = "agent_run"
+
+Decision = Literal["accepted", "edited", "rejected"]
 
 
 def get_provider() -> VisionProvider:
@@ -149,3 +156,79 @@ def run_extraction(session: Session, job: Job) -> None:
     run.status = "succeeded"
     run.error = None
     run.finished_at = datetime.now(UTC)
+    if items(run):
+        review.open_task(
+            session,
+            organisation_id=run.organisation_id,
+            subject_type=REVIEW_SUBJECT,
+            subject_id=str(run.id),
+        )
+
+
+# --- Review --------------------------------------------------------------------------------
+
+
+def items(run: AgentRun) -> dict[str, Feature]:
+    """Each suggestion of a run by its review key, `<media_asset_id>:<index>`."""
+    if run.output is None:
+        return {}
+    extraction = Extraction.model_validate(run.output)
+    return {
+        f"{photo.media_asset_id}:{index}": feature
+        for photo in extraction.photos
+        for index, feature in enumerate(photo.features)
+    }
+
+
+def decide(
+    session: Session,
+    ctx: TenantContext,
+    run_id: UUID,
+    *,
+    item_key: str,
+    decision: Decision,
+    value: str | None = None,
+    note: str | None = None,
+) -> ReviewDecision:
+    """Record an editor's decision on one suggestion. Accepted or edited values are added to
+    the listing's features; nothing else on the listing changes.
+    """
+    run = session.get(AgentRun, run_id)
+    try:
+        listing = listings.get_listing(session, ctx, run.listing_id) if run else None
+    except AppError:
+        listing = None  # same answer whether the run exists or not
+    if run is None or listing is None:
+        raise AppError(404, "not_found", "AI run not found.")
+    if not listings.can_edit(ctx, listing):
+        raise AppError(403, "forbidden", "You do not have permission to do this.")
+    task = review.get_task_for(session, REVIEW_SUBJECT, str(run.id))
+    feature = items(run).get(item_key)
+    if task is None or feature is None:
+        raise AppError(404, "not_found", "Suggestion not found.")
+
+    final = feature.value if decision == "accepted" else (value or "").strip()
+    if decision == "edited" and not 1 <= len(final) <= 120:
+        raise AppError(422, "validation_error", "Enter a value of 1 to 120 characters.")
+    row = review.decide(
+        session,
+        task,
+        item_key=item_key,
+        decision=decision,
+        suggested=feature.model_dump(mode="json"),
+        final=None if decision == "rejected" else {"attribute": feature.attribute, "value": final},
+        note=(note or "").strip() or None,
+        user_id=ctx.user.id,
+    )
+    if decision != "rejected":
+        listings.add_feature(
+            session,
+            ctx,
+            listing,
+            attribute=feature.attribute,
+            value=final,
+            media_asset_id=UUID(item_key.split(":")[0]),
+        )
+    if len(review.decisions_for(session, [task.id])) == len(items(run)):
+        review.close(task)
+    return row

@@ -13,6 +13,7 @@ from app.modules.listings.router import listings_router, properties_router
 from app.modules.media.router import listing_media_router, media_router
 from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
+from app.modules.review import models as _review_models  # noqa: F401  # no routes; registers tables
 
 API_PREFIX = "/api/v1"
 
