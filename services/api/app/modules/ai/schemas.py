@@ -1,4 +1,5 @@
 from collections.abc import Collection
+from datetime import datetime
 from typing import Literal, Self, get_args
 from uuid import UUID
 
@@ -62,3 +63,24 @@ class Extraction(BaseModel):
             raise ValueError("The output describes the same photo twice.")
         if unknown := set(ids) - set(sent):
             raise ValueError(f"The output describes {len(unknown)} photo(s) that were not sent.")
+
+
+class AgentRunOut(BaseModel):
+    """One AI run as the API shows it. `output` holds suggestions, never confirmed facts."""
+
+    id: UUID
+    listing_id: UUID
+    status: str
+    agent: str
+    agent_version: str
+    provider: str | None
+    model: str | None
+    model_version: str | None
+    inputs: list[dict[str, str]]
+    output: Extraction | None
+    error: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    # Demo output came from no model; the UI must say so.
+    is_demo: bool

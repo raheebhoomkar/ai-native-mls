@@ -541,6 +541,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/ai/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Extractions */
+        get: operations["list_extractions_api_v1_listings__listing_id__ai_extractions_get"];
+        put?: never;
+        /**
+         * Request Extraction
+         * @description Queue photo extraction. Poll the list until the run succeeds or fails.
+         */
+        post: operations["request_extraction_api_v1_listings__listing_id__ai_extractions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -574,6 +595,52 @@ export interface components {
             user_id: string;
             /** Full Name */
             full_name: string;
+        };
+        /**
+         * AgentRunOut
+         * @description One AI run as the API shows it. `output` holds suggestions, never confirmed facts.
+         */
+        AgentRunOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Status */
+            status: string;
+            /** Agent */
+            agent: string;
+            /** Agent Version */
+            agent_version: string;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Model Version */
+            model_version: string | null;
+            /** Inputs */
+            inputs: {
+                [key: string]: string;
+            }[];
+            output: components["schemas"]["Extraction"] | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Is Demo */
+            is_demo: boolean;
         };
         /** Area */
         "Area-Input": {
@@ -677,6 +744,36 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /**
+         * Extraction
+         * @description What a vision provider must return. Anything else is malformed output.
+         */
+        Extraction: {
+            /** Photos */
+            photos: components["schemas"]["PhotoExtraction"][];
+        };
+        /**
+         * Feature
+         * @description One suggestion read from one photo. A suggestion, never a confirmed fact.
+         */
+        Feature: {
+            /**
+             * Attribute
+             * @enum {string}
+             */
+            attribute: "room_type" | "flooring" | "appliance" | "window" | "balcony" | "condition" | "furnishing" | "view" | "other";
+            /** Value */
+            value: string;
+            /** Confidence */
+            confidence: number;
+            /** Evidence */
+            evidence: string;
+            /**
+             * Uncertain
+             * @default false
+             */
+            uncertain: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1135,6 +1232,16 @@ export interface components {
             token: string;
             /** Expires In Hours */
             expires_in_hours: number;
+        };
+        /** PhotoExtraction */
+        PhotoExtraction: {
+            /**
+             * Media Asset Id
+             * Format: uuid
+             */
+            media_asset_id: string;
+            /** Features */
+            features: components["schemas"]["Feature"][];
         };
         /** ProfileUpdate */
         ProfileUpdate: {
@@ -3479,6 +3586,146 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_extractions_api_v1_listings__listing_id__ai_extractions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_extraction_api_v1_listings__listing_id__ai_extractions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
