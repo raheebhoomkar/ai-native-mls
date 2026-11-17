@@ -63,6 +63,41 @@ Lists return `{"items": [...], "next_cursor": "..."}`. Pass `cursor=<next_cursor
 
 Editable records carry a `version`. Send the version you read when you edit or change status; if someone changed the record since, the API answers 409 `version_conflict`. Read it again and retry.
 
+## Webhooks
+
+An administrator adds a webhook on the **Webhooks** page: an endpoint URL (https in production, on a public address) and the events to send. The signing secret (`whsec_…`) is shown once.
+
+| Event | Sent when | `data` |
+|---|---|---|
+| `listing.changed` | A listing is created, edited, changes status or is archived | `subject_type`, `subject_id` |
+| `property.changed` | A property is created or edited | `subject_type`, `subject_id` |
+| `workflow.finished` | A listing workflow succeeds, fails or is cancelled | `subject_type`, `subject_id` (the listing), `run_id`, `status` |
+| `ping` | Someone clicks "Send test" | `subscription_id` |
+
+Each delivery is a `POST` with a JSON body:
+
+```json
+{"id": "<event id>", "type": "listing.changed", "created_at": "2026-11-17T12:00:00+00:00", "organisation_id": "…", "data": {"subject_type": "listing", "subject_id": "…"}}
+```
+
+and these headers: `X-MLS-Event` (the type), `X-MLS-Delivery` (the delivery ID, the same on every retry) and `X-MLS-Signature: t=<unix time>,v1=<hex>`. Check the signature before trusting the body:
+
+```python
+import hashlib, hmac, time
+
+def verify(secret: str, header: str, body: bytes) -> bool:
+    parts = dict(item.split("=", 1) for item in header.split(","))
+    t = int(parts["t"])
+    if abs(time.time() - t) > 300:
+        return False  # too old: maybe a replay
+    expected = hmac.new(secret.encode(), f"{t}.".encode() + body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(f"t={t},v1={expected}", header)
+```
+
+Answer with any 2xx within 10 seconds. Anything else (including redirects and timeouts) is a failed attempt; the delivery is tried again after 30 s, 1, 2, 4 and 8 minutes, then marked failed. An administrator can send a failed delivery again from the delivery log. Deliveries can repeat and arrive out of order: skip duplicates by `X-MLS-Delivery`, and read the current state through the API instead of trusting the order of events.
+
+A complete receiver is in [`examples/webhook_receiver.py`](../../examples/webhook_receiver.py).
+
 ## What is not offered yet
 
-No webhooks yet (planned in Sprint 18), no OAuth client credentials, and no per-endpoint limits. Keys cannot be rotated in place: create a new one, switch, then revoke the old one.
+No OAuth client credentials, and no per-endpoint limits. Keys and webhook secrets cannot be rotated in place: create a new one, switch, then remove the old one.

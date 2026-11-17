@@ -40,6 +40,7 @@ from app.modules.listings import service as listings
 from app.modules.listings.models import Listing, Property
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext
+from app.modules.outbox import service as outbox
 from app.modules.review import service as review
 from app.modules.search import service as search
 from app.modules.valuation import service as valuation
@@ -364,10 +365,18 @@ def steps_of(session: Session, run: WorkflowRun) -> Sequence[WorkflowStep]:
     ).all()
 
 
-def _finish(run: WorkflowRun, status: str, error: str | None = None) -> None:
+def _finish(session: Session, run: WorkflowRun, status: str, error: str | None = None) -> None:
     run.status = status
     run.error = error
     run.finished_at = datetime.now(UTC)
+    outbox.emit(
+        session,
+        "workflow.finished",
+        organisation_id=run.organisation_id,
+        subject_type="listing",
+        subject_id=run.listing_id,
+        payload={"run_id": str(run.id), "status": status},
+    )
 
 
 def _context(session: Session, run: WorkflowRun) -> TenantContext | None:
@@ -401,6 +410,7 @@ def advance(session: Session, job: Job) -> None:
     if run.passes > run.max_passes or datetime.now(UTC) > run.deadline:
         waiting = [s.name for s in steps_of(session, run) if s.status in ("pending", "waiting")]
         _finish(
+            session,
             run,
             "failed",
             f"The run used up its time or pass budget while waiting on: {', '.join(waiting)}.",
@@ -410,7 +420,7 @@ def advance(session: Session, job: Job) -> None:
     run.started_at = run.started_at or datetime.now(UTC)
     ctx = _context(session, run)
     if ctx is None:
-        _finish(run, "failed", "The person who started the run is no longer a member.")
+        _finish(session, run, "failed", "The person who started the run is no longer a member.")
         return
 
     GRAPH.invoke(
@@ -427,7 +437,7 @@ def advance(session: Session, job: Job) -> None:
         enqueue_pass(session, run, POLL)
         return
     failed = [f"{s.name}: {s.error or 'failed'}" for s in steps if s.status == "failed"]
-    _finish(run, status, "; ".join(failed) or None)
+    _finish(session, run, status, "; ".join(failed) or None)
 
 
 # --- Control: wake, cancel, retry, publication gate ----------------------------------------
@@ -468,7 +478,7 @@ def cancel(session: Session, ctx: TenantContext, run_id: UUID) -> WorkflowRun:
     run = _controllable(session, ctx, run_id)
     if run.status not in ACTIVE:
         raise AppError(409, "workflow_not_active", "Only a run that has not finished can stop.")
-    _finish(run, "cancelled", f"Cancelled by {ctx.user.email}.")
+    _finish(session, run, "cancelled", f"Cancelled by {ctx.user.email}.")
     return run
 
 
