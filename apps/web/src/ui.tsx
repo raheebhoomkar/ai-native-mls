@@ -1,6 +1,6 @@
 /** Small shared pieces of the Editorial Luxury design: icons, marks, AI tag, confidence meter. */
 
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 const ICONS = {
   home: "M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M10 21v-6h4v6",
@@ -31,6 +31,8 @@ const ICONS = {
     "M3 5h18v14H3zm0 11 5-5 4 4 3-3 6 6m-4.5-8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z",
   map: "M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zm0 0v14m6-12v14",
   comment: "M4 5h16v11H9l-5 4V5z",
+  sun: "M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
+  moon: "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z",
 } as const;
 
 export type IconName = keyof typeof ICONS;
@@ -162,5 +164,40 @@ export function initials(name: string): string {
       .slice(0, 2)
       .map((word) => word[0]!.toUpperCase())
       .join("") || "?"
+  );
+}
+
+type Theme = "light" | "dark";
+
+/** Fixed top-right switch between light and dark. index.html applies the saved choice before paint. */
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<Theme>(() =>
+    document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+  );
+  const next: Theme = theme === "dark" ? "light" : "dark";
+
+  function toggle() {
+    document.documentElement.dataset.theme = next;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", next === "dark" ? "#151310" : "#f7f5f0");
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Storage blocked (private mode): the choice lasts for this page only.
+    }
+    setTheme(next);
+  }
+
+  return (
+    <button
+      type="button"
+      className="theme-toggle"
+      onClick={toggle}
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
+    >
+      <Icon name={theme === "dark" ? "sun" : "moon"} />
+    </button>
   );
 }

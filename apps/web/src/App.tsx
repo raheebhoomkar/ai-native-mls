@@ -6,7 +6,7 @@ import { LoginForm } from "./LoginForm";
 import { OfflineBanner } from "./Offline";
 import { AcceptInvite, ResetPassword } from "./PublicLinks";
 import { SystemStatus } from "./SystemStatus";
-import { Arches, Brand, BrandMark } from "./ui";
+import { Arches, Brand, BrandMark, ThemeToggle } from "./ui";
 import { Workspace } from "./Workspace";
 
 /** Sign-in and one-time link pages: an editorial panel beside a single card. */
@@ -145,6 +145,7 @@ export function App() {
         Skip to main content
       </a>
       <OfflineBanner />
+      <ThemeToggle />
       <Routes>
         <Route
           path="/accept-invite"

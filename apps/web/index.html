@@ -18,6 +18,20 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap"
     />
     <title>AI-Native MLS</title>
+    <script>
+      // Apply the saved theme (or the system preference) before first paint.
+      (function () {
+        var theme;
+        try {
+          theme = localStorage.getItem("theme");
+        } catch (e) {}
+        if (theme !== "light" && theme !== "dark")
+          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        if (theme === "dark")
+          document.querySelector('meta[name="theme-color"]').setAttribute("content", "#151310");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

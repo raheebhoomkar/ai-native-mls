@@ -273,8 +273,13 @@ test("a listing shared by another organisation is read-only with no history requ
       /Shared by Beta Homes\. You can view this listing but not change it\./,
     ),
   ).toBeTruthy();
-  // The only buttons left on the page are the header's phone menu and Sign out.
-  expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+  // The only buttons left on the page are the theme toggle, the header's phone menu and Sign out.
+  expect(
+    screen
+      .getAllByRole("button")
+      .map((b) => b.getAttribute("aria-label") ?? b.textContent),
+  ).toEqual([
+    "Switch to dark mode",
     "Menu",
     "Sign out",
   ]);
