@@ -26,8 +26,9 @@ from app.core.errors import AppError
 from app.modules.auth import service as auth
 from app.modules.auth.models import User
 from app.modules.compliance import service as compliance
+from app.modules.geo.service import request_geocode
 from app.modules.listings import service as listings
-from app.modules.listings.models import Listing
+from app.modules.listings.models import Listing, Property
 from app.modules.listings.schemas import (
     Address,
     Area,
@@ -303,7 +304,21 @@ def seed(session: Session, password: str = SEED_PASSWORD) -> list[str]:
                 )
     created += _seed_listings(session, orgs)
     created += _seed_compliance_demo(session, orgs)
+    created += _locate_old_properties(session, orgs)
     return created + _seed_photos(session, orgs)
+
+
+def _locate_old_properties(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    """Queue a lookup for demo properties seeded before locations existed (Sprint 12)."""
+    old = session.scalars(
+        select(Property).where(
+            Property.organisation_id.in_([org.id for org in orgs.values()]),
+            Property.geo_status.is_(None),
+        )
+    ).all()
+    for prop in old:
+        request_geocode(session, prop)
+    return [f"location lookups for {len(old)} older properties"] if old else []
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,8 +1,9 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { type CurrentOrganisation, useList } from "./api";
 import type { components } from "./api-schema";
+import { type Bounds, MapView } from "./MapView";
 
 export type Listing = components["schemas"]["ListingOut"];
 type Status = Listing["status"];
@@ -38,6 +39,11 @@ const EMPTY_FILTERS = {
   min_price: "",
   max_price: "",
   sort: "newest",
+  // Set by "Search this area" on the map.
+  min_lat: "",
+  min_lon: "",
+  max_lat: "",
+  max_lon: "",
 };
 
 function toQuery(filters: typeof EMPTY_FILTERS): string {
@@ -60,6 +66,44 @@ export function Listings({
     `/listings?${toQuery(applied)}`,
     organisation.id,
   );
+
+  const [showMap, setShowMap] = useState(false);
+  const points = useMemo(
+    () =>
+      listings.items.flatMap((listing) => {
+        const location = listing.property.location;
+        return location
+          ? [
+              {
+                id: listing.id,
+                lat: Number(location.latitude),
+                lon: Number(location.longitude),
+                label: listing.title,
+                href: `/listings/${listing.id}`,
+              },
+            ]
+          : [];
+      }),
+    [listings.items],
+  );
+  const inArea = applied.min_lat !== "";
+
+  function searchArea(bounds: Bounds) {
+    const area = {
+      min_lat: bounds.min_lat.toFixed(6),
+      min_lon: bounds.min_lon.toFixed(6),
+      max_lat: bounds.max_lat.toFixed(6),
+      max_lon: bounds.max_lon.toFixed(6),
+    };
+    setDraft((current) => ({ ...current, ...area }));
+    setApplied((current) => ({ ...current, ...area }));
+  }
+
+  function anyArea() {
+    const area = { min_lat: "", min_lon: "", max_lat: "", max_lon: "" };
+    setDraft((current) => ({ ...current, ...area }));
+    setApplied((current) => ({ ...current, ...area }));
+  }
 
   const set = (key: keyof typeof EMPTY_FILTERS) => (value: string) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -166,6 +210,39 @@ export function Listings({
         </div>
       </form>
 
+      <p>
+        <button
+          type="button"
+          aria-pressed={showMap}
+          onClick={() => setShowMap((shown) => !shown)}
+        >
+          {showMap ? "Hide map" : "Show map"}
+        </button>
+        {inArea && (
+          <>
+            {" "}
+            Showing listings in the map area.{" "}
+            <button type="button" onClick={anyArea}>
+              Any area
+            </button>
+          </>
+        )}
+      </p>
+      {showMap && (
+        <>
+          <MapView
+            points={points}
+            label="Map of the listings below"
+            onSearchArea={searchArea}
+          />
+          {points.length < listings.items.length && (
+            <p>
+              {listings.items.length - points.length} of the listings below have
+              no location and are not on the map.
+            </p>
+          )}
+        </>
+      )}
       {listings.loading && <p>Loading…</p>}
       {listings.error && <p role="alert">{listings.error}</p>}
       {!listings.loading && !listings.error && listings.items.length === 0 && (

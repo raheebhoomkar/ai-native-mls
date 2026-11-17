@@ -12,6 +12,7 @@ import type { components } from "./api-schema";
 import { ImportSourceDetails } from "./ListingImport";
 import { ListingMedia } from "./ListingMedia";
 import { ListingCompliance } from "./ListingCompliance";
+import { ListingLocation } from "./ListingLocation";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
@@ -360,6 +361,13 @@ export function ListingDetail({
         </div>
       )}
 
+      <ListingLocation
+        key={`${property.id}:${reloads}`}
+        property={property}
+        title={listing.title}
+        isOwn={isOwn}
+        canEdit={listing.can_edit && !listing.archived_at}
+      />
       <ListingMedia
         listingId={listing.id}
         canManage={listing.can_edit}

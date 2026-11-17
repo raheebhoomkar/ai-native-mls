@@ -192,3 +192,61 @@ test("without listing:read there is no Listings link and the page is refused", a
   expect(screen.queryByRole("link", { name: "Listings" })).toBeNull();
   expect(searches).toHaveLength(0);
 });
+
+// MapLibre needs WebGL; this stand-in reports a fixed visible area.
+vi.mock("./MapView", () => ({
+  MapView: ({
+    points,
+    onSearchArea,
+  }: {
+    points: unknown[];
+    onSearchArea?: (bounds: Record<string, number>) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onSearchArea?.({
+          min_lat: 18,
+          min_lon: 72.5,
+          max_lat: 19.5,
+          max_lon: 73.5,
+        })
+      }
+    >
+      Search this area ({points.length} on map)
+    </button>
+  ),
+}));
+
+test("the map searches the visible area until any area is chosen", async () => {
+  const located = {
+    ...listing("l1", "Lake-view apartment", "25000000.00"),
+    property: {
+      ...listing("l1", "", "1").property,
+      location: { latitude: "19.0760000", longitude: "72.8777000" },
+    },
+  };
+  const searches = stubApi(["listing:read"], () => ({
+    items: [located, listing("l2", "Plot", "100.00")],
+    next_cursor: null,
+  }));
+  render(<App />);
+  await screen.findByText("Lake-view apartment");
+
+  fireEvent.click(screen.getByRole("button", { name: "Show map" }));
+  expect(
+    screen.getByText(
+      "1 of the listings below have no location and are not on the map.",
+    ),
+  ).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: /Search this area \(1 on map\)/ }),
+  );
+  await waitFor(() =>
+    expect(searches.at(-1)?.get("min_lat")).toBe("18.000000"),
+  );
+  expect(searches.at(-1)?.get("max_lon")).toBe("73.500000");
+
+  fireEvent.click(await screen.findByRole("button", { name: "Any area" }));
+  await waitFor(() => expect(searches.at(-1)?.has("min_lat")).toBe(false));
+});

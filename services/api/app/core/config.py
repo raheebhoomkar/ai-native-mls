@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.5-flash"
     # Gemini takes 15-40 s per call; overloaded models answer 503 only after about 80 s.
     ai_timeout_seconds: float = Field(default=90, ge=5, le=600)
+    # Geocoder; see app/modules/geo/geocoder.py. "demo" knows city centres only.
+    geocoder: Literal["demo", "nominatim"] = "demo"
+    nominatim_url: str = "https://nominatim.openstreetmap.org"
+    # Nominatim's usage policy asks for an identifying User-Agent; operators add a contact here.
+    geocoder_user_agent: str = "ai-native-mls/0.1"
 
     @field_validator("gemini_api_key", mode="before")
     @classmethod

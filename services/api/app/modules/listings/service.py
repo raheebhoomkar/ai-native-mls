@@ -9,6 +9,8 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.errors import AppError, ErrorDetail
 from app.core.pagination import PageParams, paginate
+from app.modules.geo.distance import within_km
+from app.modules.geo.service import request_geocode
 from app.modules.listings.models import Listing, ListingFeature, ListingStatusHistory, Property
 from app.modules.listings.schemas import (
     ListingCreate,
@@ -99,6 +101,9 @@ def _flush(session: Session) -> None:
 # --- Properties ---------------------------------------------------------------------------
 
 
+_ADDRESS_COLUMNS = ("address_line1", "locality", "city", "state", "postal_code", "country")
+
+
 def _property_columns(data: PropertyCreate) -> dict[str, Any]:
     address = data.address
     return {
@@ -122,6 +127,7 @@ def create_property(session: Session, ctx: TenantContext, data: PropertyCreate) 
     prop = Property(organisation_id=ctx.organisation_id, **_property_columns(data))
     session.add(prop)
     session.flush()
+    request_geocode(session, prop)
     session.refresh(prop)  # read back database-normalised values, e.g. 1250 -> 1250.00
     return prop
 
@@ -167,9 +173,12 @@ def update_property(
 ) -> Property:
     prop = get_property(session, ctx, property_id)
     _check_version(prop.version, data.version)
+    old_address = [getattr(prop, column) for column in _ADDRESS_COLUMNS]
     for column, value in _property_columns(data).items():
         setattr(prop, column, value)
     _flush(session)
+    if [getattr(prop, column) for column in _ADDRESS_COLUMNS] != old_address:
+        request_geocode(session, prop)
     return prop
 
 
@@ -305,6 +314,21 @@ def list_listings(
                 Property.locality.icontains(filters.q, autoescape=True),
                 Property.city.icontains(filters.q, autoescape=True),
             )
+        )
+    if filters.near_lat is not None and filters.near_lon is not None and filters.radius_km:
+        stmt = stmt.where(
+            within_km(
+                Property.latitude,
+                Property.longitude,
+                filters.near_lat,
+                filters.near_lon,
+                filters.radius_km,
+            )
+        )
+    if filters.min_lat is not None and filters.max_lat is not None:
+        stmt = stmt.where(
+            Property.latitude.between(filters.min_lat, filters.max_lat),
+            Property.longitude.between(filters.min_lon, filters.max_lon),
         )
     by_price = filters.sort.startswith("price")
     return paginate(

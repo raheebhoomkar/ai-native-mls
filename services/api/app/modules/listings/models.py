@@ -26,6 +26,9 @@ from app.core.db import Base, one_of
 
 PROPERTY_TYPES: tuple[str, ...] = ("apartment", "house", "villa", "plot", "commercial", "other")
 AREA_UNITS: tuple[str, ...] = ("sqft", "sqm")
+GEO_STATUSES: tuple[str, ...] = ("pending", "located", "not_found", "failed")
+GEO_SOURCES: tuple[str, ...] = ("demo", "nominatim", "manual")
+GEO_PRECISIONS: tuple[str, ...] = ("address", "locality", "city")
 LISTING_TYPES: tuple[str, ...] = ("sale", "rent")
 STATUSES: tuple[str, ...] = (
     "draft",
@@ -56,6 +59,32 @@ class Property(Base):
             "(area_value IS NULL) = (area_unit IS NULL)", name="ck_properties_area_has_unit"
         ),
         Index("ix_properties_organisation_city", "organisation_id", "city"),
+        CheckConstraint(
+            "latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180",
+            name="ck_properties_coordinates_range",
+        ),
+        # A point exists exactly when the property is located, with where it came from.
+        CheckConstraint(
+            "(latitude IS NOT NULL) = (COALESCE(geo_status, '') = 'located')"
+            " AND (latitude IS NULL) = (longitude IS NULL)"
+            " AND (latitude IS NULL) = (geo_source IS NULL)"
+            " AND (latitude IS NULL) = (geo_precision IS NULL)"
+            " AND (latitude IS NULL) = (located_at IS NULL)",
+            name="ck_properties_location_complete",
+        ),
+        CheckConstraint(
+            f"geo_status IS NULL OR {one_of('geo_status', GEO_STATUSES)}",
+            name="ck_properties_geo_status",
+        ),
+        CheckConstraint(
+            f"geo_source IS NULL OR {one_of('geo_source', GEO_SOURCES)}",
+            name="ck_properties_geo_source",
+        ),
+        CheckConstraint(
+            f"geo_precision IS NULL OR {one_of('geo_precision', GEO_PRECISIONS)}",
+            name="ck_properties_geo_precision",
+        ),
+        Index("ix_properties_organisation_coordinates", "organisation_id", "latitude", "longitude"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -73,6 +102,14 @@ class Property(Base):
     area_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     area_unit: Mapped[str | None] = mapped_column(String(10))
     year_built: Mapped[int | None] = mapped_column(Integer)
+    # Location (Sprint 12). Written with UPDATE statements, so it does not bump `version`.
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 7))
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(10, 7))
+    geo_status: Mapped[str | None] = mapped_column(String(10))
+    geo_source: Mapped[str | None] = mapped_column(String(10))
+    geo_precision: Mapped[str | None] = mapped_column(String(10))
+    located_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    geo_error: Mapped[str | None] = mapped_column(String(300))
     # Incremented on every update; a stale writer gets 409 instead of overwriting.
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = _timestamp()

@@ -37,6 +37,8 @@ Photo redaction adds no permission either. Whoever may manage a listing's photos
 
 Policy checks (compliance flags) add no permission either. Whoever may edit a listing may request a check of its title and remarks (`POST /listings/{id}/compliance/scans`); submitting for review also starts one. Readers in the organisation that owns the listing may list its checks; another organisation gets 404, even for a shared listing. Holders of `listing:publish` decide findings (accept, dismiss, request edits) and rule on appeals, except on listings where they are the listing agent; an appeal ruling must come from someone other than the first reviewer. Only the listing agent may appeal, once per finding. Every request and decision is audited with the policy version. No decision changes, hides or rejects the listing. See `docs/modules/s11-compliance.md`.
 
+Property locations add no permission. A point is part of the property, so whoever may read a listing sees its point, including on listings shared by another organisation. Holders of `listing:write` in the organisation that owns the property may set a point by hand (`PUT /properties/{id}/location`); another organisation gets 404. Neighbourhood facts (`GET /properties/{id}/enrichment`) are for readers in the owning organisation only. Geocoding runs as a background job with no user; it and every manual point are audited. See `docs/modules/s12-geospatial.md`.
+
 ## Role assignment rules
 
 - An MLS organisation may hold: MLS administrator, broker, agent, API consumer.

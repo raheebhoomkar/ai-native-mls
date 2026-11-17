@@ -110,6 +110,7 @@ def test_storage_outage_retries_then_shows_the_failure(
 ) -> None:
     _, _, clients = brokerage
     listing = new_listing(clients["agent"])
+    run_jobs(db)  # the property's geocoding job, so only the thumbnail job is left
     upload(clients["agent"], listing["id"], image_bytes())
 
     def unavailable(key: str) -> bytes:

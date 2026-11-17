@@ -440,3 +440,14 @@ td.import-problems ul {
   margin: 0;
   padding-left: 1rem;
 }
+
+.map-block {
+  margin: 0.5rem 0 1rem;
+}
+
+.map {
+  height: 18rem;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}

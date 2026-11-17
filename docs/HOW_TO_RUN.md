@@ -19,6 +19,7 @@ Sprints 0 to 11 of the plan are done. Per-sprint notes, with design decisions an
 | Privacy redaction | Blur faces, plates, phone numbers, watermarks and signs in a copy; approve or reject it | `s9-redaction.md` |
 | Import | Check and import a CSV of listings; see where an imported listing came from | `s10-import.md` |
 | Compliance flags | Check titles and remarks against an illustrative India policy; review queue; accept, dismiss, request edits; appeal | `s11-compliance.md` |
+| Maps and location | See where a property is and how exact the point is; set it by hand; show listings on a map and search the visible area | `s12-geospatial.md` |
 
 ## 1. Prerequisites
 
@@ -151,7 +152,7 @@ Do these in order in http://localhost:5173. Sign out with the button in the head
 1. Sign in as `sunrise.admin@demo.example.com`, open Members.
 2. Invite a new email as agent. A one-time invitation link is shown once (no email is sent).
 3. Open that link in a private window and accept it, setting a name and password. The page says "You are now a member of Sunrise Realty. Sign in to continue." Sign in with the new account.
-4. Back as the admin: the person is listed; change their role, then remove them. Both work and appear in the audit log (`GET /api/v1/audit-events`, see 6.10).
+4. Back as the admin: the person is listed; change their role, then remove them. Both work and appear in the audit log (`GET /api/v1/audit-events`, see 6.11).
 5. Sign in as `sunrise.agent@demo.example.com`: Members shows the list but no invite, role or remove controls.
 
 ### 6.3 Platform administration
@@ -230,7 +231,19 @@ The worker must be running. The seed adds `[Demo] 2 BHK to let near the IT park`
 
 The listing's text never changes because of a check or a decision; the agent edits it.
 
-### 6.10 API checks
+### 6.10 Maps and location (worker must be running)
+
+New and changed addresses are located by a background job. Without settings, the labelled demo geocoder is used: it knows the centres of a few Indian cities and of the seeded localities (Powai, Andheri West, Worli, Koregaon Park, Baner), and nothing more precise. `GEOCODER=nominatim` uses OpenStreetMap Nominatim instead (1 request per second; set `GEOCODER_USER_AGENT` with a contact). Map tiles come from OpenStreetMap's public tile server, which allows light use only.
+
+1. As `sunrise.agent@demo.example.com`, open `[Demo] 3 BHK apartment near the lake`. The "Location" section shows the coordinates, "Accurate to the area", "Source: demo geocoder (approximate centres of known areas and cities)" and the date, with a map marker in Powai. The map credits "© OpenStreetMap contributors".
+2. "Set the point by hand": click the map (the coordinates fill in) or type them, then "Save point". The text now says "Accurate to the building. Source: set by hand". Change the address: the point set by hand stays.
+3. Create a property in a city the demo does not know (for example "Atlantis"): the listing shows "Finding this address on the map…", then "No match for this address. Set the point by hand." Change the city to Pune: it is located again.
+4. "Neighbourhood" lists nearest metro station, schools within 2 km and flood risk as "Not available: No neighbourhood data source is set up." No value is invented.
+5. Listings page: "Show map" shows the listings of the current page as markers (click one to open it) and says how many have no location. Zoom to Mumbai and press "Search this area": only listings inside the map area are listed, with "Any area" to undo. "Clear filters" also removes it.
+6. As `harbour.admin@demo.example.com`, a shared Sunrise listing shows its point and map but no "Set the point by hand" and no "Neighbourhood".
+7. API: `GET /api/v1/listings?near_lat=19.076&near_lon=72.8777&radius_km=10` lists listings within 10 km with `distance_km`; `min_lat`, `min_lon`, `max_lat`, `max_lon` give a box. `PUT /api/v1/properties/{id}/location` sets a point; audit actions `property.geocoded` and `property.location_set`.
+
+### 6.11 API checks
 
 The interactive docs at http://localhost:8000/api/v1/docs can call every endpoint. Sign in with `POST /api/v1/auth/login` there first; the session cookie is then used for the other calls. From a terminal:
 
@@ -244,7 +257,7 @@ curl -s -b /tmp/mls.cookies 'http://localhost:8000/api/v1/audit-events?limit=10'
 
 The audit log has no screen yet; read it through `GET /api/v1/audit-events` as an administrator. API conventions (error envelope, `X-Organisation-ID`, `version` for edits, cursor pagination) are in the README.
 
-### 6.11 Phone width
+### 6.12 Phone width
 
 In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column.
 
@@ -258,7 +271,8 @@ Put `GEMINI_API_KEY=...` in `.env` and restart the API and the worker. Get a key
 |---|---|
 | API exits at start with a settings error | `.env` missing or a value malformed. `cp .env.example .env`. |
 | `connection refused` on 5432 | Postgres not running: `docker compose up -d --wait`. Another Postgres on 5432: set `POSTGRES_PORT` and the port in `DATABASE_URL` in `.env`. |
-| Photos stay "Processing", AI runs stay queued | The worker (terminal 2) is not running. |
+| Photos stay "Processing", AI runs stay queued, locations stay "Finding this address" | The worker (terminal 2) is not running. |
+| Seeded properties made before Sprint 12 have no location | Run the seed again: it queues a lookup for them. |
 | A check fails with `No handler registered for job kind ...` | A worker started before you pulled new code took the job. Stop every old `python -m app.worker` process, start one again, then run the check again. |
 | Photos stop loading after an API restart | Download links are signed with a per-process key in development. Reload the page. |
 | Sign-in works but lists are empty | Seed not loaded: `cd services/api && .venv/bin/python -m app.seed`. |

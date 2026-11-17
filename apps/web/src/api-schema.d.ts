@@ -375,6 +375,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/properties/{property_id}/location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Property Location
+         * @description Set the point by hand. It replaces any geocoded point and is kept on address changes.
+         */
+        put: operations["set_property_location_api_v1_properties__property_id__location_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/properties/{property_id}/enrichment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Property Enrichment
+         * @description Neighbourhood facts, each with its source and date, or "not available" with a reason.
+         */
+        get: operations["get_property_enrichment_api_v1_properties__property_id__enrichment_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings": {
         parameters: {
             query?: never;
@@ -1259,6 +1299,24 @@ export interface components {
             /** Categories */
             categories: string[];
         };
+        /** EnrichmentItemOut */
+        EnrichmentItemOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string | null;
+            /** Source */
+            source: string | null;
+            /** Retrieved At */
+            retrieved_at: string | null;
+            /**
+             * Reason
+             * @description Why there is no value. Set exactly when value is null.
+             */
+            reason: string | null;
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -1646,6 +1704,11 @@ export interface components {
             allowed_transitions: ("draft" | "pending_review" | "active" | "temporarily_off_market" | "sold" | "withdrawn" | "expired")[];
             /** Can Edit */
             can_edit: boolean;
+            /**
+             * Distance Km
+             * @description From near_lat, near_lon, in km to 2 decimals; only then.
+             */
+            distance_km?: number | null;
             /** Version */
             version: number;
             /**
@@ -1684,6 +1747,44 @@ export interface components {
             expires_on?: string | null;
             /** Listing Agent User Id */
             listing_agent_user_id?: string | null;
+        };
+        /** Location */
+        Location: {
+            /** Latitude */
+            latitude: string;
+            /** Longitude */
+            longitude: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "demo" | "nominatim" | "manual";
+            /**
+             * Precision
+             * @description How close the point is to the property: the building, the area or the city.
+             * @enum {string}
+             */
+            precision: "address" | "locality" | "city";
+            /**
+             * Located At
+             * Format: date-time
+             */
+            located_at: string;
+            /**
+             * Attribution
+             * @description Credit the data source requires, if any.
+             */
+            attribution: string | null;
+        };
+        /**
+         * LocationIn
+         * @description A point set by hand. Kept when the address changes; set it again to correct it.
+         */
+        LocationIn: {
+            /** Latitude */
+            latitude: number | string;
+            /** Longitude */
+            longitude: number | string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1982,6 +2083,14 @@ export interface components {
              * Format: uuid
              */
             organisation_id: string;
+            location: components["schemas"]["Location"] | null;
+            /**
+             * Location Status
+             * @description None for properties created before locations existed.
+             */
+            location_status: ("pending" | "located" | "not_found" | "failed") | null;
+            /** Location Error */
+            location_error: string | null;
             /** Version */
             version: number;
             /**
@@ -3525,6 +3634,150 @@ export interface operations {
             };
         };
     };
+    set_property_location_api_v1_properties__property_id__location_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                property_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_property_enrichment_api_v1_properties__property_id__enrichment_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                property_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrichmentItemOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_listings_api_v1_listings_get: {
         parameters: {
             query?: {
@@ -3542,6 +3795,13 @@ export interface operations {
                 q?: string | null;
                 include_archived?: boolean;
                 sort?: "newest" | "oldest" | "price_asc" | "price_desc";
+                near_lat?: number | null;
+                near_lon?: number | null;
+                radius_km?: number | null;
+                min_lat?: number | null;
+                min_lon?: number | null;
+                max_lat?: number | null;
+                max_lon?: number | null;
                 limit?: number;
                 cursor?: string | null;
             };
