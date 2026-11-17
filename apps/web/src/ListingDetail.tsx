@@ -9,6 +9,7 @@ import {
   useList,
 } from "./api";
 import type { components } from "./api-schema";
+import { ImportSourceDetails } from "./ListingImport";
 import { ListingMedia } from "./ListingMedia";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
@@ -252,6 +253,7 @@ export function ListingDetail({
           )}
           <dt>Remarks</dt>
           <dd className="remarks">{listing.remarks || "None"}</dd>
+          {isOwn && <ImportSourceDetails listingId={listing.id} />}
         </dl>
         <ListingSuggestions
           listingId={listing.id}

@@ -401,3 +401,16 @@ form.wide > label select {
   gap: 0.3rem;
   max-width: 30rem;
 }
+
+/* Long cells that would make a table too wide on one line. */
+td.wrap,
+td.import-problems {
+  white-space: normal;
+  vertical-align: top;
+  min-width: 14rem;
+}
+
+td.import-problems ul {
+  margin: 0;
+  padding-left: 1rem;
+}

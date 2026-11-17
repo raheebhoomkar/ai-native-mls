@@ -16,6 +16,7 @@ import {
 } from "./api";
 import { ListingDetail } from "./ListingDetail";
 import { EditListing, NewListing } from "./ListingForm";
+import { ListingImport } from "./ListingImport";
 import { Listings } from "./Listings";
 import { Members } from "./Members";
 import { SystemStatus } from "./SystemStatus";
@@ -220,10 +221,13 @@ export function Workspace({
         {organisation && canSeeListings && (
           <>
             {organisation.my_permissions.includes("listing:write") && (
-              <Route
-                path="/listings/new"
-                element={<NewListing organisation={organisation} />}
-              />
+              <>
+                <Route
+                  path="/listings/new"
+                  element={<NewListing organisation={organisation} />}
+                />
+                <Route path="/listings/import" element={<ListingImport />} />
+              </>
             )}
             <Route
               path="/listings/:id"

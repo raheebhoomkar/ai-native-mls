@@ -116,6 +116,8 @@ function stubApi(routes: Record<string, (call: Call) => Response>) {
     "GET /listings/l1/media": () => Response.json([]),
     "GET /listings/l1/ai/extractions": () => Response.json([]),
     "GET /listings/l1/features": () => Response.json([]),
+    "GET /listings/l1/redactions": () => Response.json([]),
+    "GET /listings/l1/import-source": () => Response.json(null),
     ...routes,
   };
   vi.stubGlobal(

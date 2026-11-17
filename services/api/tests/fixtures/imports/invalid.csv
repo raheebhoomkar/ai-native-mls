@@ -1,0 +1,4 @@
+Listing ID,Property type,Listing type,Title,Price,Address,City,PIN code,Bedrooms,Area,Year built,Expiry date
+X-1,Castle,Sale,Has a bad type,1 crore,1 Fort Road,Jaipur,302001,3,,2010,
+X-2,Apartment,Swap,Bad listing type and price,lots,2 Main Street,Delhi,11001,two,1200,15,31/02/2027
+X-1,House,Rent,,45000,,Chennai,600001,2,90 hectares,2001,2027-01-01

@@ -1,0 +1,4 @@
+Ref No,Property Type,Sale/Rent,Headline,Description,Price (INR),Address Line 1,Locality,City,Pincode,Country,BHK,Baths,Carpet Area (sq ft),Expiry
+P-101,Flat,For Sale,2 BHK in Powai,"Near the lake, ""ready to move""",₹1.25 Cr,"Flat 1203, Hiranandani Gardens",Powai,Mumbai,400 076,India,2 BHK,2,"1,050",31/03/2027
+P-102,Plot,Resale,Corner plot in Whitefield,,85 lakh,Survey 44,Whitefield,Bengaluru,560066,India,,,200 sq yd,
+P-103,Office,Rent,Office space on MG Road,,"Rs. 1,50,000",3rd floor,MG Road,Bengaluru,560001,India,,1,,

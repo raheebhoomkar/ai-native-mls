@@ -1,0 +1,3 @@
+ListingId,PropertyType,Listing type,Title,PublicRemarks,ListPrice,UnparsedAddress,City,StateOrProvince,PostalCode,Country,BedroomsTotal,BathroomsTotalInteger,LivingArea,LivingAreaUnits,YearBuilt,ExpirationDate
+RESO-1,Apartment,Sale,3 BHK with lake view,"Bright flat, east facing.",25000000,"Tower B, Lake Homes",Mumbai,Maharashtra,400076,IN,3,2,1250,Square Feet,2015,2027-03-31
+RESO-2,SingleFamilyResidence,Lease,Independent house near the park,,85000,12 Park Road,Pune,Maharashtra,411001,IN,4,3,220,Square Meters,2008,
