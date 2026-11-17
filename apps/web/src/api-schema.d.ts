@@ -463,6 +463,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Features
+         * @description Features a person confirmed, for example from reviewed AI suggestions.
+         */
+        get: operations["list_features_api_v1_listings__listing_id__features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings/{listing_id}/media": {
         parameters: {
             query?: never;
@@ -562,6 +582,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai/runs/{run_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide
+         * @description Accept, edit or reject one suggestion. Accepted or edited values become listing
+         *     features; listing fields are never changed. One decision per suggestion.
+         */
+        post: operations["decide_api_v1_ai_runs__run_id__decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -641,6 +682,12 @@ export interface components {
             finished_at: string | null;
             /** Is Demo */
             is_demo: boolean;
+            /** Decisions */
+            decisions: {
+                [key: string]: components["schemas"]["DecisionOut"];
+            };
+            /** Can Review */
+            can_review: boolean;
         };
         /** Area */
         "Area-Input": {
@@ -719,6 +766,44 @@ export interface components {
             my_permissions: ("organisation:read" | "member:read" | "member:manage" | "audit:read" | "listing:read" | "listing:write" | "listing:manage_all" | "listing:publish")[];
             /** Assignable Roles */
             assignable_roles: ("mls_admin" | "brokerage_admin" | "broker" | "agent" | "api_consumer")[];
+        };
+        /**
+         * DecisionIn
+         * @description An editor's decision on one suggestion. `value` is required only for `edited`.
+         */
+        DecisionIn: {
+            /** Item Key */
+            item_key: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accepted" | "edited" | "rejected";
+            /** Value */
+            value?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** DecisionOut */
+        DecisionOut: {
+            /** Item Key */
+            item_key: string;
+            /** Decision */
+            decision: string;
+            /** Final Value */
+            final_value: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Decided By User Id
+             * Format: uuid
+             */
+            decided_by_user_id: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
         };
         /** ErrorBody */
         ErrorBody: {
@@ -925,6 +1010,35 @@ export interface components {
             expires_on?: string | null;
             /** Listing Agent User Id */
             listing_agent_user_id?: string | null;
+        };
+        /**
+         * ListingFeatureOut
+         * @description A person-confirmed observable feature. `media_asset_id` is the photo that shows it.
+         */
+        ListingFeatureOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Attribute */
+            attribute: string;
+            /** Value */
+            value: string;
+            /** Source */
+            source: string;
+            /** Media Asset Id */
+            media_asset_id: string | null;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ListingOut */
         ListingOut: {
@@ -3191,6 +3305,76 @@ export interface operations {
             };
         };
     };
+    list_features_api_v1_listings__listing_id__features_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingFeatureOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_listing_media_api_v1_listings__listing_id__media_get: {
         parameters: {
             query?: never;
@@ -3695,6 +3879,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_api_v1_ai_runs__run_id__decisions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOut"];
                 };
             };
             /** @description Unauthorized */

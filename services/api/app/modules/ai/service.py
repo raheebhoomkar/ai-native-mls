@@ -180,6 +180,14 @@ def items(run: AgentRun) -> dict[str, Feature]:
     }
 
 
+def decisions(session: Session, run: AgentRun) -> dict[str, ReviewDecision]:
+    """A run's decisions by item key; empty when nothing was put up for review."""
+    task = review.get_task_for(session, REVIEW_SUBJECT, str(run.id))
+    if task is None:
+        return {}
+    return {row.item_key: row for row in review.decisions_for(session, [task.id]) if row.item_key}
+
+
 def decide(
     session: Session,
     ctx: TenantContext,

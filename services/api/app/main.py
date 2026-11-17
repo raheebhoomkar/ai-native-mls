@@ -5,6 +5,7 @@ from app.core.config import get_settings
 from app.core.errors import install_error_handling
 from app.core.logging import configure_logging
 from app.modules.ai.router import router as ai_router
+from app.modules.ai.router import runs_router as ai_runs_router
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.health.router import router as health_router
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     v1.include_router(listing_media_router)
     v1.include_router(media_router)
     v1.include_router(ai_router)
+    v1.include_router(ai_runs_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

@@ -160,6 +160,20 @@ class StatusChangeOut(BaseModel):
     changed_at: datetime
 
 
+class ListingFeatureOut(BaseModel):
+    """A person-confirmed observable feature. `media_asset_id` is the photo that shows it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    attribute: str
+    value: str
+    source: str
+    media_asset_id: UUID | None
+    created_by_user_id: UUID
+    created_at: datetime
+
+
 class ListingFilters(BaseModel):
     scope: Literal["all", "organisation", "network"] = Field(
         default="all",

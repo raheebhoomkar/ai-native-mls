@@ -10,6 +10,7 @@ import {
 } from "./api";
 import type { components } from "./api-schema";
 import { ListingMedia } from "./ListingMedia";
+import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
 
 type Status = Listing["status"];
@@ -189,64 +190,70 @@ export function ListingDetail({
         </p>
       )}
 
-      <dl>
-        <dt>Property</dt>
-        <dd>
-          {PROPERTY_TYPE_LABELS[property.property_type]}
-          {property.bedrooms != null && ` · ${property.bedrooms} bed`}
-          {property.bathrooms != null && ` · ${property.bathrooms} bath`}
-          {property.area &&
-            ` · ${property.area.value} ${property.area.unit === "sqft" ? "sq ft" : "sq m"}`}
-          {property.year_built != null && ` · built ${property.year_built}`}
-        </dd>
-        <dt>Address</dt>
-        <dd>
-          {[
-            address.line1,
-            address.line2,
-            address.locality,
-            address.city,
-            address.state,
-            address.postal_code,
-            address.country,
-          ]
-            .filter(Boolean)
-            .join(", ")}
-        </dd>
-        <dt>Listing agent</dt>
-        <dd>
-          {listing.listing_agent.full_name}, {listing.organisation_name}
-        </dd>
-        <dt>Visibility</dt>
-        <dd>
-          {listing.visibility === "network"
-            ? "Shared with other organisations while active, off market or sold"
-            : "Private to the listing organisation"}
-        </dd>
-        {listing.expires_on && (
-          <>
-            <dt>Expires on</dt>
-            <dd>{listing.expires_on}</dd>
-          </>
-        )}
-        {listing.listed_at && (
-          <>
-            <dt>First listed</dt>
-            <dd>{when(listing.listed_at)}</dd>
-          </>
-        )}
-        {listing.sold_price && (
-          <>
-            <dt>Sold price</dt>
-            <dd>
-              {formatMoney(listing.sold_price)} (reported by the listing agent,
-              not verified)
-            </dd>
-          </>
-        )}
-        <dt>Remarks</dt>
-        <dd className="remarks">{listing.remarks || "None"}</dd>
-      </dl>
+      <div className="detail-columns">
+        <dl>
+          <dt>Property</dt>
+          <dd>
+            {PROPERTY_TYPE_LABELS[property.property_type]}
+            {property.bedrooms != null && ` · ${property.bedrooms} bed`}
+            {property.bathrooms != null && ` · ${property.bathrooms} bath`}
+            {property.area &&
+              ` · ${property.area.value} ${property.area.unit === "sqft" ? "sq ft" : "sq m"}`}
+            {property.year_built != null && ` · built ${property.year_built}`}
+          </dd>
+          <dt>Address</dt>
+          <dd>
+            {[
+              address.line1,
+              address.line2,
+              address.locality,
+              address.city,
+              address.state,
+              address.postal_code,
+              address.country,
+            ]
+              .filter(Boolean)
+              .join(", ")}
+          </dd>
+          <dt>Listing agent</dt>
+          <dd>
+            {listing.listing_agent.full_name}, {listing.organisation_name}
+          </dd>
+          <dt>Visibility</dt>
+          <dd>
+            {listing.visibility === "network"
+              ? "Shared with other organisations while active, off market or sold"
+              : "Private to the listing organisation"}
+          </dd>
+          {listing.expires_on && (
+            <>
+              <dt>Expires on</dt>
+              <dd>{listing.expires_on}</dd>
+            </>
+          )}
+          {listing.listed_at && (
+            <>
+              <dt>First listed</dt>
+              <dd>{when(listing.listed_at)}</dd>
+            </>
+          )}
+          {listing.sold_price && (
+            <>
+              <dt>Sold price</dt>
+              <dd>
+                {formatMoney(listing.sold_price)} (reported by the listing
+                agent, not verified)
+              </dd>
+            </>
+          )}
+          <dt>Remarks</dt>
+          <dd className="remarks">{listing.remarks || "None"}</dd>
+        </dl>
+        <ListingSuggestions
+          listingId={listing.id}
+          canRequest={listing.can_edit && !listing.archived_at}
+        />
+      </div>
 
       {conflict && (
         <div className="notice" role="alert">

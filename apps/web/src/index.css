@@ -292,3 +292,62 @@ form.wide > label select {
   margin: 0.75rem 0;
   max-width: 30rem;
 }
+
+/* Listing details with AI suggestions beside them; stacked below 48rem. */
+.detail-columns {
+  display: grid;
+  gap: 0 2rem;
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .detail-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.suggestions h3:first-child {
+  margin-top: 0.75rem;
+}
+
+.suggestion-photos,
+.suggestion-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.suggestion-photos img {
+  display: block;
+  width: 8rem;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.suggestion-list li {
+  overflow-wrap: anywhere;
+}
+
+.suggestion-list .actions {
+  margin: 0.25rem 0;
+}
+
+.suggestion-list form {
+  margin: 0.25rem 0;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.decision {
+  margin: 0.25rem 0;
+  font-weight: 600;
+}

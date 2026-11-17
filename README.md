@@ -2,7 +2,7 @@
 
 An API-first, AI-assisted Multiple Listing Service for real-estate professionals. The full product definition and module roadmap are in [INSTRUCTIONS.md](INSTRUCTIONS.md).
 
-**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Sprint 6 adds listing photos: upload with validation, thumbnails made by a background job worker, signed download links, removal with a retention period, and local-disk or S3-compatible storage. AI features are not built yet.
+**Status:** Sprints 0–5 are built, which completes Phase A: foundation; sign-in, organisations (tenants), role-based permissions and an audit log; invitations and member management; properties and listings with lifecycle, search and sharing between organisations, in the API and the web app; a deployable container image and a browser end-to-end test. Sprint 6 adds listing photos: upload with validation, thumbnails made by a background job worker, signed download links, removal with a retention period, and local-disk or S3-compatible storage. Sprints 7 and 8 add AI photo analysis: a vision model (Gemini, or a labelled demo provider when no key is set) suggests observable features from the photos, and an editor accepts, edits or rejects each one on the listing page. Accepted values are kept as confirmed features; AI never changes the fields an agent entered.
 
 **Live demo:** not deployed yet. The steps are in [docs/deployment/render.md](docs/deployment/render.md).
 

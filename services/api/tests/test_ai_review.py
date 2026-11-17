@@ -2,7 +2,7 @@
 
 import copy
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.modules.ai import service as ai_service
 from app.modules.ai.models import AgentRun
+from app.modules.audit.models import AuditEvent
 from app.modules.listings import service as listings
 from app.modules.listings.models import Listing
 from app.modules.organisations.deps import TenantContext
@@ -186,3 +187,67 @@ def test_the_same_feature_is_kept_once(
         )
 
     assert [f.value for f in listings.list_features(db, listing)] == ["Hardwood"]
+
+
+# --- API -------------------------------------------------------------------------------------
+
+
+def decisions_url(run: AgentRun) -> str:
+    return f"/api/v1/ai/runs/{run.id}/decisions"
+
+
+def test_api_decision_is_shown_on_the_run_and_as_a_feature(
+    db: Session, brokerage: Brokerage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run, listing, _ = reviewed_run(db, brokerage, monkeypatch)
+    _, _, clients = brokerage
+    floor = key_of(run, "flooring")
+
+    response = clients["agent"].post(
+        decisions_url(run), json={"item_key": floor, "decision": "edited", "value": "Teak"}
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["final_value"] == "Teak"
+    [run_out] = clients["agent"].get(extractions(listing["id"])).json()
+    assert run_out["can_review"] is True
+    assert run_out["decisions"][floor]["decision"] == "edited"
+    features = clients["agent"].get(f"{LISTINGS}/{listing['id']}/features").json()
+    assert [(f["attribute"], f["value"]) for f in features] == [("flooring", "Teak")]
+    event = db.scalar(select(AuditEvent).where(AuditEvent.action == "ai.suggestion_decided"))
+    assert event is not None and event.detail == {"item_key": floor, "decision": "edited"}
+    again = clients["agent"].post(
+        decisions_url(run), json={"item_key": floor, "decision": "rejected"}
+    )
+    assert again.status_code == 409
+
+
+def test_api_readers_see_decisions_but_cannot_decide(
+    db: Session, brokerage: Brokerage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run, listing, [key, _] = reviewed_run(db, brokerage, monkeypatch)
+    _, _, clients = brokerage
+
+    for role in ("api", "agent2"):
+        response = clients[role].post(
+            decisions_url(run), json={"item_key": key, "decision": "accepted"}
+        )
+        assert response.status_code == 403, role
+    [run_out] = clients["agent2"].get(extractions(listing["id"])).json()
+    assert (run_out["can_review"], run_out["decisions"]) == (False, {})
+    assert clients["agent2"].get(f"{LISTINGS}/{listing['id']}/features").json() == []
+
+
+def test_api_bad_body_and_unknown_run(
+    db: Session, brokerage: Brokerage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run, _, [key, _] = reviewed_run(db, brokerage, monkeypatch)
+    _, _, clients = brokerage
+
+    bad = clients["agent"].post(decisions_url(run), json={"item_key": key, "decision": "maybe"})
+    edit = clients["agent"].post(decisions_url(run), json={"item_key": key, "decision": "edited"})
+    missing = clients["agent"].post(
+        f"/api/v1/ai/runs/{uuid4()}/decisions", json={"item_key": key, "decision": "accepted"}
+    )
+
+    assert (bad.status_code, edit.status_code, missing.status_code) == (422, 422, 404)

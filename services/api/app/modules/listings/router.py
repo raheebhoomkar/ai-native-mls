@@ -18,6 +18,7 @@ from app.modules.listings.schemas import (
     AgentOut,
     Area,
     ListingCreate,
+    ListingFeatureOut,
     ListingFilters,
     ListingOut,
     ListingUpdate,
@@ -280,3 +281,10 @@ def list_history(
     return Page(
         items=[StatusChangeOut.model_validate(item) for item in items], next_cursor=next_cursor
     )
+
+
+@listings_router.get("/{listing_id}/features", responses=_ERRORS)
+def list_features(listing_id: UUID, session: SessionDep, ctx: CanRead) -> list[ListingFeatureOut]:
+    """Features a person confirmed, for example from reviewed AI suggestions."""
+    listing = service.get_listing(session, ctx, listing_id)
+    return [ListingFeatureOut.model_validate(f) for f in service.list_features(session, listing)]

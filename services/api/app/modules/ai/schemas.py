@@ -65,6 +65,27 @@ class Extraction(BaseModel):
             raise ValueError(f"The output describes {len(unknown)} photo(s) that were not sent.")
 
 
+class DecisionIn(BaseModel):
+    """An editor's decision on one suggestion. `value` is required only for `edited`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    item_key: str = Field(min_length=1, max_length=100)
+    decision: Literal["accepted", "edited", "rejected"]
+    value: str | None = Field(default=None, max_length=200)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class DecisionOut(BaseModel):
+    item_key: str
+    decision: str
+    # The value kept on the listing; null when rejected.
+    final_value: str | None
+    note: str | None
+    decided_by_user_id: UUID
+    decided_at: datetime
+
+
 class AgentRunOut(BaseModel):
     """One AI run as the API shows it. `output` holds suggestions, never confirmed facts."""
 
@@ -84,3 +105,7 @@ class AgentRunOut(BaseModel):
     finished_at: datetime | None
     # Demo output came from no model; the UI must say so.
     is_demo: bool
+    # Decisions so far, by item key `<media_asset_id>:<feature index>`.
+    decisions: dict[str, DecisionOut]
+    # Whether the caller may accept, edit or reject this run's suggestions.
+    can_review: bool
