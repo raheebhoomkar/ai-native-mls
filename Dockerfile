@@ -1,6 +1,6 @@
 # One image: the API, which also serves the built web app. Build from the repository root.
 
-FROM node:24-slim AS web
+FROM node:26-slim AS web
 WORKDIR /src/apps/web
 RUN npm install --global pnpm@12.18.0
 COPY apps/web/package.json apps/web/pnpm-lock.yaml ./
