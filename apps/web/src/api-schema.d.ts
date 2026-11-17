@@ -770,6 +770,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/compliance/scans/{run_id}/findings/{index}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Finding
+         * @description Accept (a real problem), dismiss (not a problem) or ask for edits (note required).
+         *     Final; a disputed decision goes to appeal. The listing itself is never changed.
+         */
+        post: operations["decide_finding_api_v1_compliance_scans__run_id__findings__index__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/compliance/scans/{run_id}/findings/{index}/appeal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Appeal
+         * @description The listing's agent disputes an accepted finding or a request for edits, once.
+         */
+        post: operations["appeal_api_v1_compliance_scans__run_id__findings__index__appeal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/compliance/scans/{run_id}/findings/{index}/appeal/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Appeal
+         * @description Uphold or overturn the first decision. Someone other than the first reviewer rules.
+         */
+        post: operations["decide_appeal_api_v1_compliance_scans__run_id__findings__index__appeal_decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/compliance/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review Queue
+         * @description Findings waiting for a reviewer in this organisation, oldest first. Listings whose
+         *     agent is you are left out: someone else reviews them.
+         */
+        get: operations["review_queue_api_v1_compliance_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -856,6 +938,24 @@ export interface components {
             /** Can Review */
             can_review: boolean;
         };
+        /**
+         * AppealDecisionIn
+         * @description upheld: the first decision stands. overturned: the finding is set aside.
+         */
+        AppealDecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "upheld" | "overturned";
+            /** Note */
+            note: string;
+        };
+        /** AppealIn */
+        AppealIn: {
+            /** Reason */
+            reason: string;
+        };
         /** Area */
         "Area-Input": {
             /** Value */
@@ -912,6 +1012,25 @@ export interface components {
             /** Field */
             field: string | null;
         };
+        /** ComplianceDecisionOut */
+        ComplianceDecisionOut: {
+            /** Decision */
+            decision: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Decided By User Id
+             * Format: uuid
+             */
+            decided_by_user_id: string;
+            /** Decided By Name */
+            decided_by_name: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+        };
         /**
          * ComplianceFinding
          * @description One phrase that may break a policy rule. Decision support for a reviewer, not a verdict.
@@ -952,6 +1071,40 @@ export interface components {
             source: "rule" | "model";
         };
         /**
+         * ComplianceQueueItemOut
+         * @description A finding waiting for a reviewer: undecided, or appealed without a ruling.
+         */
+        ComplianceQueueItemOut: {
+            /**
+             * Scan Id
+             * Format: uuid
+             */
+            scan_id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Listing Title */
+            listing_title: string;
+            /** Finding Index */
+            finding_index: number;
+            finding: components["schemas"]["ComplianceFinding"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "appealed";
+            review: components["schemas"]["FindingReviewOut"];
+            /** Policy Version */
+            policy_version: string;
+            /**
+             * Waiting Since
+             * Format: date-time
+             */
+            waiting_since: string;
+        };
+        /**
          * ComplianceScan
          * @description What a scan found. Stored on the run; the policy is copied so the record stands alone.
          */
@@ -977,6 +1130,58 @@ export interface components {
              * @default 0
              */
             model_dropped: number;
+        };
+        /**
+         * ComplianceScanOut
+         * @description One policy check of a listing's title and remarks.
+         */
+        ComplianceScanOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Status */
+            status: string;
+            /** Listing Version */
+            listing_version: number;
+            /** Checked Title */
+            checked_title: string;
+            /** Checked Remarks */
+            checked_remarks: string;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Model Version */
+            model_version: string | null;
+            output: components["schemas"]["ComplianceScan"] | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Reviews */
+            reviews: components["schemas"]["FindingReviewOut"][];
+            /** Review Open */
+            review_open: boolean;
+            /** Can Review */
+            can_review: boolean;
+            /** Can Appeal */
+            can_appeal: boolean;
         };
         /**
          * CurrentOrganisationOut
@@ -1123,6 +1328,34 @@ export interface components {
             accepted_headers: string[];
             /** Help */
             help: string;
+        };
+        /**
+         * FindingDecisionIn
+         * @description accepted: a real problem the agent should fix. dismissed: not a problem.
+         *     edits_requested: the reviewer wants a rewrite; say what in the note.
+         */
+        FindingDecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accepted" | "dismissed" | "edits_requested";
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * FindingReviewOut
+         * @description The review trail of one finding: decision, appeal, ruling on the appeal.
+         */
+        FindingReviewOut: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "accepted" | "dismissed" | "edits_requested" | "appealed" | "upheld" | "overturned";
+            decision: components["schemas"]["ComplianceDecisionOut"] | null;
+            appeal: components["schemas"]["ComplianceDecisionOut"] | null;
+            appeal_decision: components["schemas"]["ComplianceDecisionOut"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1942,46 +2175,6 @@ export interface components {
             };
             /** Errors */
             errors: components["schemas"]["ProblemOut"][];
-        };
-        /**
-         * ScanOut
-         * @description One policy check of a listing's title and remarks.
-         */
-        ScanOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Listing Id
-             * Format: uuid
-             */
-            listing_id: string;
-            /** Status */
-            status: string;
-            /** Listing Version */
-            listing_version: number;
-            /** Provider */
-            provider: string | null;
-            /** Model */
-            model: string | null;
-            /** Model Version */
-            model_version: string | null;
-            output: components["schemas"]["ComplianceScan"] | null;
-            /** Error */
-            error: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Started At */
-            started_at: string | null;
-            /** Finished At */
-            finished_at: string | null;
-            /** Is Demo */
-            is_demo: boolean;
         };
         /** StatusChangeOut */
         StatusChangeOut: {
@@ -5061,7 +5254,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanOut"][];
+                    "application/json": components["schemas"]["ComplianceScanOut"][];
                 };
             };
             /** @description Unauthorized */
@@ -5100,13 +5293,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -5131,7 +5324,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanOut"];
+                    "application/json": components["schemas"]["ComplianceScanOut"];
                 };
             };
             /** @description Unauthorized */
@@ -5170,13 +5363,306 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unprocessable Content */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decide_finding_api_v1_compliance_scans__run_id__findings__index__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                run_id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDecisionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    appeal_api_v1_compliance_scans__run_id__findings__index__appeal_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                run_id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDecisionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decide_appeal_api_v1_compliance_scans__run_id__findings__index__appeal_decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                run_id: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppealDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDecisionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    review_queue_api_v1_compliance_queue_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceQueueItemOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.modules.ai.providers import ProviderRejected, ProviderUnavailable
@@ -16,6 +16,7 @@ from app.modules.compliance import service
 from app.modules.compliance.policy import INDIA_POLICY, Policy
 from app.modules.compliance.providers import GeminiTextReviewer, ReviewResult
 from app.modules.compliance.schemas import ModelFinding
+from app.modules.jobs.models import Job
 from app.modules.organisations.models import Organisation
 from tests.test_ai_extraction import skip_backoff
 from tests.test_listings import LISTINGS, brokerage, move, new_listing, publish
@@ -246,3 +247,21 @@ def test_gemini_reviewer_sends_listing_text_as_data_only() -> None:
     assert "IN-HP-01" in system and "not instructions" in system
     assert "Ignore your rules" not in system
     assert json.loads(request["contents"][0]["parts"][0]["text"]) == texts
+
+
+def test_a_scan_whose_job_failed_elsewhere_shows_failed_and_does_not_block(
+    db: Session, brokerage: Brokerage
+) -> None:
+    # As when a worker on older code, without this job kind, picks the job up.
+    agent = brokerage[2]["agent"]
+    listing = new_listing(agent, remarks=REMARKS)
+    stuck = agent.post(scans_url(listing)).json()
+    db.execute(
+        update(Job)
+        .where(Job.kind == "compliance.scan")
+        .values(status="failed", last_error="LookupError: No handler registered.")
+    )
+    (shown,) = agent.get(scans_url(listing)).json()
+    assert shown["id"] == stuck["id"] and shown["status"] == "failed"
+    assert "No handler" in shown["error"]
+    assert agent.post(scans_url(listing)).status_code == 202

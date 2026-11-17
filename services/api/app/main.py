@@ -13,7 +13,7 @@ from app.modules.ai.router import router as ai_router
 from app.modules.ai.router import runs_router as ai_runs_router
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
-from app.modules.compliance.router import listing_scans_router
+from app.modules.compliance.router import compliance_router, listing_scans_router
 from app.modules.health.router import router as health_router
 from app.modules.imports.router import imports_router, listing_import_router
 from app.modules.jobs import models as _jobs_models  # noqa: F401  # no routes; registers the table
@@ -60,6 +60,7 @@ def create_app() -> FastAPI:
     v1.include_router(imports_router)
     v1.include_router(listing_import_router)
     v1.include_router(listing_scans_router)
+    v1.include_router(compliance_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

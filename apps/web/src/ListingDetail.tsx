@@ -11,6 +11,7 @@ import {
 import type { components } from "./api-schema";
 import { ImportSourceDetails } from "./ListingImport";
 import { ListingMedia } from "./ListingMedia";
+import { ListingCompliance } from "./ListingCompliance";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
@@ -369,6 +370,14 @@ export function ListingDetail({
         media={media}
         canRequest={listing.can_edit && !listing.archived_at}
       />
+
+      {isOwn && (
+        <ListingCompliance
+          listingId={listing.id}
+          listingVersion={listing.version}
+          canRequest={listing.can_edit && !listing.archived_at}
+        />
+      )}
 
       {isOwn && <History listingId={listing.id} version={listing.version} />}
     </section>

@@ -35,6 +35,8 @@ Reviewing AI suggestions adds no permission either. Whoever may edit the listing
 
 Photo redaction adds no permission either. Whoever may manage a listing's photos (edit rights, listing not archived) may request a check of a photo (`POST /media/{id}/redactions`). Whoever may edit the listing may approve or reject the blurred copy (`POST /ai/redactions/{id}/decision`); each decision is final and audited. Whoever may read the listing may list its checks and see the copies (`GET /listings/{id}/redactions`). Another organisation gets 404. The original photo is never changed. See `docs/modules/s9-redaction.md`.
 
+Policy checks (compliance flags) add no permission either. Whoever may edit a listing may request a check of its title and remarks (`POST /listings/{id}/compliance/scans`); submitting for review also starts one. Readers in the organisation that owns the listing may list its checks; another organisation gets 404, even for a shared listing. Holders of `listing:publish` decide findings (accept, dismiss, request edits) and rule on appeals, except on listings where they are the listing agent; an appeal ruling must come from someone other than the first reviewer. Only the listing agent may appeal, once per finding. Every request and decision is audited with the policy version. No decision changes, hides or rejects the listing. See `docs/modules/s11-compliance.md`.
+
 ## Role assignment rules
 
 - An MLS organisation may hold: MLS administrator, broker, agent, API consumer.

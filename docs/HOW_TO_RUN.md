@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 10 of the plan are done; Sprint 11 (compliance flags) is in progress. Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 11 of the plan are done. Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -18,7 +18,7 @@ Sprints 0 to 10 of the plan are done; Sprint 11 (compliance flags) is in progres
 | AI photo suggestions | Ask the AI what the photos show; accept, edit or reject each suggestion | `s7-ai-extraction.md`, `s8-ai-review.md` |
 | Privacy redaction | Blur faces, plates, phone numbers, watermarks and signs in a copy; approve or reject it | `s9-redaction.md` |
 | Import | Check and import a CSV of listings; see where an imported listing came from | `s10-import.md` |
-| Compliance flags | Check a listing's title and remarks against an illustrative policy (API only so far) | `s11-compliance.md` |
+| Compliance flags | Check titles and remarks against an illustrative India policy; review queue; accept, dismiss, request edits; appeal | `s11-compliance.md` |
 
 ## 1. Prerequisites
 
@@ -123,7 +123,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17: API 233 passed, 2 deselected (the deselected ones are live Gemini tests); web 52 passed. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17: API 241 passed, 3 deselected (the deselected ones are live Gemini tests); web 59 passed. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
@@ -210,18 +210,24 @@ Do these in order in http://localhost:5173. Sign out with the button in the head
 4. Change `Sale` to `Swap` and choose the file again. The row shows "\"Swap\" is not a listing type. Use sale or rent." and there is no Import button.
 5. Fix it and import. Each new listing page shows "Imported from portal.csv, row 2" and its original values. Importing the same Ref No again is refused.
 
-### 6.9 Compliance flags (Sprint 11, in progress)
+### 6.9 Policy checks (compliance flags)
 
-No screen yet (chunk 4 adds it). Test through the API (see 6.10 for signing in with curl; the worker must be running):
+The worker must be running. The seed adds `[Demo] 2 BHK to let near the IT park` (Sunrise Realty, pending review) whose remarks say "Vegetarians only, no bachelors.", with a check already queued.
 
-1. As `sunrise.agent@demo.example.com`, create a listing whose remarks say `Jain families only. No bachelors.`
-2. `POST /api/v1/listings/{id}/compliance/scans` returns 202 with status `queued`.
-3. `GET` the same path. Once `succeeded`, `output.findings` lists `IN-HP-01` ("Jain families only") and `IN-HP-04` ("No bachelors"), each with evidence, offsets, severity, confidence, explanation and suggestion. `output.policy_notice` says it is not legal advice.
-4. Without `GEMINI_API_KEY`: `is_demo` is true and `output.model_checked` is false with the reason. With a key, Hinglish such as `Sirf shakahari log` should also be found, marked `source: "model"`.
-5. Submit a listing for review. A scan starts by itself (audit `compliance.scan_requested` with trigger `submitted`).
-6. As `harbour.admin@demo.example.com`, the same path for a shared Sunrise listing returns 404: scans are internal to the owning organisation.
+1. As `sunrise.agent@demo.example.com`, open that listing. The "Policy check" section (below the photos) shows two findings: "Vegetarians only" (rule IN-HP-03, food habits) and "no bachelors" (IN-HP-04, marital status). Each shows the phrase marked in its sentence, severity, rule, "word rule", confidence, explanation and a suggestion, and "Waiting for review". The agent sees no decision buttons.
+2. Without `GEMINI_API_KEY` a note says only the word rules ran, with a "Demo" badge. With a key, the AI check also runs; when Gemini fails (or the free quota is used up) the check still finishes after about 90 seconds of retries, with a note saying the AI check did not run and why.
+3. The section says it is not a legal review. With no findings it says "No findings under ... This is not a legal review." It never says "compliant".
+4. Sign in as `sunrise.admin@demo.example.com`. "Review queue" in the nav lists both findings, oldest first, each linked to the listing.
+5. On the listing, finding 1: "Confirm issue". Finding 2: "Request edits" stays disabled until a note is typed; then it is recorded. Both leave the queue.
+6. As the agent: under finding 1, enter a reason and "Appeal". The line says "Appealed by ... Waiting for another reviewer." It appears in the queue again as appealed.
+7. As `sunrise.admin@demo.example.com` (who made the first decision): "Uphold decision" or "Overturn decision" gives "Another reviewer must decide this appeal."
+8. As `two.orgs@demo.example.com` working in Sunrise Realty (a broker): rule on the appeal with a reason. The finding shows the result and, below it, the full trail: decision, appeal, ruling, each with name and time.
+9. As the agent, edit the remarks. The section says the listing changed after the check; "Check again" runs a new check, and the older check's review closes ("A newer check replaced this one").
+10. Submitting any listing for review starts a check by itself.
+11. As `harbour.admin@demo.example.com`, open a shared Sunrise listing: there is no Policy check section, and `GET /api/v1/listings/{id}/compliance/scans` returns 404.
+12. Audit log (`GET /api/v1/audit-events`): `compliance.scan_requested`, `compliance.finding_decided`, `compliance.finding_appealed`, `compliance.appeal_decided`, each with the rule and policy version.
 
-The listing itself never changes. Reviewing findings comes in Sprint 11 chunk 3.
+The listing's text never changes because of a check or a decision; the agent edits it.
 
 ### 6.10 API checks
 
@@ -252,6 +258,7 @@ Put `GEMINI_API_KEY=...` in `.env` and restart the API and the worker. Get a key
 | API exits at start with a settings error | `.env` missing or a value malformed. `cp .env.example .env`. |
 | `connection refused` on 5432 | Postgres not running: `docker compose up -d --wait`. Another Postgres on 5432: set `POSTGRES_PORT` and the port in `DATABASE_URL` in `.env`. |
 | Photos stay "Processing", AI runs stay queued | The worker (terminal 2) is not running. |
+| A check fails with `No handler registered for job kind ...` | A worker started before you pulled new code took the job. Stop every old `python -m app.worker` process, start one again, then run the check again. |
 | Photos stop loading after an API restart | Download links are signed with a per-process key in development. Reload the page. |
 | Sign-in works but lists are empty | Seed not loaded: `cd services/api && .venv/bin/python -m app.seed`. |
 | Web type errors after pulling API changes | `cd apps/web && pnpm gen:api` (API code must be importable; Postgres running). |

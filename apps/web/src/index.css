@@ -396,6 +396,32 @@ form.wide > label select {
   padding-left: 1.25rem;
 }
 
+/* Policy check findings. */
+.finding-list {
+  display: grid;
+  gap: 1rem;
+  padding-left: 1.25rem;
+}
+
+.evidence {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.evidence mark {
+  font-weight: 600;
+}
+
+.trail {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.severity-high {
+  color: #b00020;
+}
+
 .note-field {
   display: grid;
   gap: 0.3rem;

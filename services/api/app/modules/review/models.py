@@ -18,7 +18,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base, one_of
 
 TASK_STATUSES: tuple[str, ...] = ("open", "closed")
-DECISIONS: tuple[str, ...] = ("accepted", "edited", "rejected")
+# Compliance (Sprint 11) adds a finding's dismissal, a request for edits, and the appeal trail.
+DECISIONS: tuple[str, ...] = (
+    "accepted",
+    "edited",
+    "rejected",
+    "dismissed",
+    "edits_requested",
+    "appealed",
+    "upheld",
+    "overturned",
+)
 
 
 class ReviewTask(Base):

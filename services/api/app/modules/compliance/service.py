@@ -6,7 +6,8 @@ Scans are internal to the organisation that owns the listing.
 """
 
 from collections.abc import Sequence
-from dataclasses import asdict
+from contextlib import suppress
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
@@ -21,16 +22,24 @@ from app.modules.ai.providers import ProviderError
 from app.modules.audit import service as audit
 from app.modules.compliance.policy import INDIA_POLICY, Policy, check_remarks
 from app.modules.compliance.providers import DemoTextReviewer, GeminiTextReviewer, TextReviewer
-from app.modules.compliance.schemas import ComplianceFinding, ComplianceScan, ModelFinding
+from app.modules.compliance.schemas import (
+    ComplianceFinding,
+    ComplianceScan,
+    ModelFinding,
+    ReviewState,
+)
 from app.modules.jobs import service as jobs
 from app.modules.jobs.models import Job
 from app.modules.listings import service as listings
 from app.modules.listings.models import Listing
 from app.modules.organisations.deps import TenantContext
+from app.modules.review import service as review
+from app.modules.review.models import ReviewDecision, ReviewTask
 
 AGENT = "compliance"
 AGENT_VERSION = "1"
 MAX_ATTEMPTS = 3
+REVIEW_SUBJECT = "compliance_scan"
 
 Trigger = Literal["manual", "submitted"]
 
@@ -59,24 +68,38 @@ def _own_listing(session: Session, ctx: TenantContext, listing_id: UUID) -> List
 
 
 def _in_progress(session: Session, listing_id: UUID) -> bool:
-    return (
-        session.scalar(
-            select(AgentRun.id).where(
+    return any(
+        stalled(session, run) is None
+        for run in session.scalars(
+            select(AgentRun).where(
                 AgentRun.listing_id == listing_id,
                 AgentRun.agent == AGENT,
                 AgentRun.status.in_(("queued", "running")),
             )
         )
-        is not None
     )
 
 
-def request_scan(session: Session, ctx: TenantContext, listing_id: UUID) -> AgentRun:
+def stalled(session: Session, run: AgentRun) -> str | None:
+    """Why an unfinished scan will never finish: its job failed without reaching the handler,
+    for example on a worker still running older code. None when it may still finish.
+    """
+    if run.status not in ("queued", "running") or run.job_id is None:
+        return None
+    job = session.get(Job, run.job_id)
+    if job is None or job.status != "failed":
+        return None
+    return job.last_error or "The check stopped."
+
+
+def request_scan(
+    session: Session, ctx: TenantContext, listing_id: UUID
+) -> tuple[Listing, AgentRun]:
     """Queue a check of the listing's current title and remarks. Editors only."""
     listing = _scannable(session, ctx, listing_id)
     if _in_progress(session, listing.id):
         raise AppError(409, "scan_in_progress", "This listing is already being checked.")
-    return _queue(session, ctx, listing, "manual")
+    return listing, _queue(session, ctx, listing, "manual")
 
 
 def scan_on_submit(session: Session, ctx: TenantContext, listing_id: UUID) -> AgentRun | None:
@@ -114,6 +137,8 @@ def _queue(session: Session, ctx: TenantContext, listing: Listing, trigger: Trig
             }
         ],
         status="queued",
+        # Set here, not by the database, so scans in one transaction still have an order.
+        created_at=datetime.now(UTC),
     )
     session.add(run)
     session.flush()
@@ -129,10 +154,12 @@ def _queue(session: Session, ctx: TenantContext, listing: Listing, trigger: Trig
     return run
 
 
-def list_scans(session: Session, ctx: TenantContext, listing_id: UUID) -> Sequence[AgentRun]:
+def list_scans(
+    session: Session, ctx: TenantContext, listing_id: UUID
+) -> tuple[Listing, Sequence[AgentRun]]:
     """Newest first. Only the organisation that owns the listing sees its scans."""
-    _own_listing(session, ctx, listing_id)
-    return session.scalars(
+    listing = _own_listing(session, ctx, listing_id)
+    return listing, session.scalars(
         select(AgentRun)
         .where(AgentRun.listing_id == listing_id, AgentRun.agent == AGENT)
         .order_by(AgentRun.created_at.desc(), AgentRun.id.desc())
@@ -290,3 +317,273 @@ def run_scan(session: Session, job: Job) -> None:
     run.status = "succeeded"
     run.error = None
     run.finished_at = datetime.now(UTC)
+    if _supersede(session, run) and findings:
+        review.open_task(
+            session,
+            organisation_id=run.organisation_id,
+            subject_type=REVIEW_SUBJECT,
+            subject_id=str(run.id),
+        )
+
+
+def _supersede(session: Session, run: AgentRun) -> bool:
+    """Close the reviews of the listing's older scans. False when a newer scan has already
+    finished (this one ran late after retries), so this one gets no review.
+    """
+    others = session.scalars(
+        select(AgentRun).where(
+            AgentRun.listing_id == run.listing_id, AgentRun.agent == AGENT, AgentRun.id != run.id
+        )
+    ).all()
+    if any(o.created_at > run.created_at and o.status == "succeeded" for o in others):
+        return False
+    older = [str(o.id) for o in others if o.created_at < run.created_at]
+    for task in session.scalars(
+        select(ReviewTask).where(
+            ReviewTask.subject_type == REVIEW_SUBJECT,
+            ReviewTask.subject_id.in_(older),
+            ReviewTask.status == "open",
+        )
+    ):
+        review.close(task)
+    return True
+
+
+# --- Review and appeal ---------------------------------------------------------------------
+#
+# Item keys of a scan's review task, per finding index i: "i" (the reviewer's decision),
+# "i:appeal" (the listing agent's appeal) and "i:appeal_decision" (a second reviewer's ruling).
+
+FindingDecision = Literal["accepted", "dismissed", "edits_requested"]
+AppealDecision = Literal["upheld", "overturned"]
+APPEALABLE = ("accepted", "edits_requested")
+# The decision row, with the scan and finding it is about (for the audit record).
+type Decided = tuple[AgentRun, ComplianceFinding, ReviewDecision]
+
+
+@dataclass
+class FindingReview:
+    decision: ReviewDecision | None = None
+    appeal: ReviewDecision | None = None
+    appeal_decision: ReviewDecision | None = None
+
+    @property
+    def state(self) -> ReviewState:
+        if self.appeal_decision:
+            return self.appeal_decision.decision  # type: ignore[return-value]  # upheld, overturned
+        if self.appeal:
+            return "appealed"
+        return self.decision.decision if self.decision else "open"  # type: ignore[return-value]
+
+
+def can_review(ctx: TenantContext, listing: Listing) -> bool:
+    """Approvers of the owning organisation, except the listing's own agent."""
+    return (
+        listing.organisation_id == ctx.organisation_id
+        and ctx.has("listing:publish")
+        and listing.listing_agent_user_id != ctx.user.id
+    )
+
+
+def can_appeal(ctx: TenantContext, listing: Listing) -> bool:
+    return listing.organisation_id == ctx.organisation_id and (
+        listing.listing_agent_user_id == ctx.user.id
+    )
+
+
+def findings_of(run: AgentRun) -> list[ComplianceFinding]:
+    return ComplianceScan.model_validate(run.output).findings if run.output else []
+
+
+def reviews(
+    task: ReviewTask | None, rows: Sequence[ReviewDecision], count: int
+) -> list[FindingReview]:
+    """One entry per finding, built from the task's decision rows."""
+    result = [FindingReview() for _ in range(count)]
+    for row in rows:
+        if row.task_id != (task.id if task else None) or row.item_key is None:
+            continue
+        index, _, part = row.item_key.partition(":")
+        if index.isdigit() and int(index) < count:
+            setattr(result[int(index)], part or "decision", row)
+    return result
+
+
+def review_of(session: Session, run: AgentRun) -> tuple[ReviewTask | None, list[FindingReview]]:
+    task = review.get_task_for(session, REVIEW_SUBJECT, str(run.id))
+    rows = review.decisions_for(session, [task.id]) if task else []
+    return task, reviews(task, rows, len(findings_of(run)))
+
+
+def _finding(
+    session: Session, ctx: TenantContext, run_id: UUID, index: int
+) -> tuple[AgentRun, Listing, ReviewTask, ComplianceFinding, FindingReview]:
+    run = session.get(AgentRun, run_id)
+    listing = None
+    if run is not None and run.agent == AGENT:
+        with suppress(AppError):  # same answer whether the scan exists or not
+            listing = _own_listing(session, ctx, run.listing_id)
+    findings = findings_of(run) if run and listing else []
+    if run is None or listing is None or not 0 <= index < len(findings):
+        raise AppError(404, "not_found", "Finding not found.")
+    task, finding_reviews = review_of(session, run)
+    if task is None or task.status != "open":
+        raise AppError(409, "scan_superseded", "A newer check of this listing replaced this one.")
+    return run, listing, task, findings[index], finding_reviews[index]
+
+
+def decide_finding(
+    session: Session,
+    ctx: TenantContext,
+    run_id: UUID,
+    index: int,
+    *,
+    decision: FindingDecision,
+    note: str | None,
+) -> Decided:
+    """Accept (a real problem), dismiss (not a problem) or ask for edits (note required)."""
+    run, listing, task, finding, _ = _finding(session, ctx, run_id, index)
+    if not can_review(ctx, listing):
+        raise AppError(
+            403, "forbidden", "Only an approver other than the listing's agent may review."
+        )
+    note = (note or "").strip() or None
+    if decision == "edits_requested" and note is None:
+        raise AppError(422, "note_required", "Say what should change.")
+    return (
+        run,
+        finding,
+        review.decide(
+            session,
+            task,
+            item_key=str(index),
+            decision=decision,
+            suggested=finding.model_dump(mode="json"),
+            final=None,
+            note=note,
+            user_id=ctx.user.id,
+        ),
+    )
+
+
+def appeal(
+    session: Session, ctx: TenantContext, run_id: UUID, index: int, *, reason: str
+) -> Decided:
+    """The listing agent disputes an accepted finding or a request for edits, once."""
+    run, listing, task, finding, current = _finding(session, ctx, run_id, index)
+    if not can_appeal(ctx, listing):
+        raise AppError(403, "forbidden", "Only the listing's agent may appeal.")
+    if not reason.strip():
+        raise AppError(422, "reason_required", "Say why the decision is wrong.")
+    if current.decision is None or current.decision.decision not in APPEALABLE:
+        raise AppError(
+            409,
+            "not_appealable",
+            "Only an accepted finding or a request for edits can be appealed.",
+        )
+    return (
+        run,
+        finding,
+        review.decide(
+            session,
+            task,
+            item_key=f"{index}:appeal",
+            decision="appealed",
+            suggested={"decision_id": str(current.decision.id)},
+            final=None,
+            note=reason.strip(),
+            user_id=ctx.user.id,
+        ),
+    )
+
+
+def decide_appeal(
+    session: Session,
+    ctx: TenantContext,
+    run_id: UUID,
+    index: int,
+    *,
+    decision: AppealDecision,
+    note: str,
+) -> Decided:
+    """Uphold or overturn the first decision. A different reviewer must rule."""
+    run, listing, task, finding, current = _finding(session, ctx, run_id, index)
+    if not can_review(ctx, listing):
+        raise AppError(
+            403, "forbidden", "Only an approver other than the listing's agent may review."
+        )
+    if not note.strip():
+        raise AppError(422, "note_required", "Explain the ruling.")
+    if current.appeal is None or current.decision is None:
+        raise AppError(409, "no_appeal", "This finding has not been appealed.")
+    if current.decision.decided_by_user_id == ctx.user.id:
+        raise AppError(403, "same_reviewer", "Another reviewer must decide this appeal.")
+    return (
+        run,
+        finding,
+        review.decide(
+            session,
+            task,
+            item_key=f"{index}:appeal_decision",
+            decision=decision,
+            suggested={"appeal_id": str(current.appeal.id)},
+            final=None,
+            note=note.strip(),
+            user_id=ctx.user.id,
+        ),
+    )
+
+
+@dataclass
+class QueueItem:
+    run: AgentRun
+    listing: Listing
+    index: int
+    finding: ComplianceFinding
+    review: FindingReview
+    waiting_since: datetime
+
+
+def queue(session: Session, ctx: TenantContext) -> list[QueueItem]:
+    """Findings waiting for a reviewer in the organisation, oldest first: undecided ones and
+    appeals without a ruling. Only on each listing's newest scan.
+
+    shortcut: loads every open compliance task of the organisation at once; paginate if an
+    organisation has thousands open.
+    """
+    tasks = session.scalars(
+        select(ReviewTask).where(
+            ReviewTask.organisation_id == ctx.organisation_id,
+            ReviewTask.subject_type == REVIEW_SUBJECT,
+            ReviewTask.status == "open",
+        )
+    ).all()
+    if not tasks:
+        return []
+    runs = {
+        str(run.id): run
+        for run in session.scalars(
+            select(AgentRun).where(AgentRun.id.in_([UUID(t.subject_id) for t in tasks]))
+        )
+    }
+    listing_rows = session.scalars(
+        select(Listing).where(Listing.id.in_({run.listing_id for run in runs.values()}))
+    )
+    by_id = {listing.id: listing for listing in listing_rows}
+    rows = review.decisions_for(session, [t.id for t in tasks])
+    items: list[QueueItem] = []
+    for task in tasks:
+        run = runs[task.subject_id]
+        listing = by_id[run.listing_id]
+        if listing.archived_at is not None or not can_review(ctx, listing):
+            continue
+        findings = findings_of(run)
+        for index, item in enumerate(reviews(task, rows, len(findings))):
+            if item.state == "open":
+                since = run.finished_at or run.created_at
+            elif item.state == "appealed" and item.appeal is not None:
+                since = item.appeal.decided_at
+            else:
+                continue
+            items.append(QueueItem(run, listing, index, findings[index], item, since))
+    return sorted(items, key=lambda i: (i.waiting_since, i.index))
