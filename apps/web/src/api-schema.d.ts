@@ -745,6 +745,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/compliance/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Scans
+         * @description Newest first. Only the organisation that owns the listing sees them.
+         */
+        get: operations["list_scans_api_v1_listings__listing_id__compliance_scans_get"];
+        put?: never;
+        /**
+         * Request Scan
+         * @description Check the listing's title and remarks against the listing policy. Poll the list until
+         *     the scan finishes. Findings are for a person to review; the listing is never changed.
+         */
+        post: operations["request_scan_api_v1_listings__listing_id__compliance_scans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -886,6 +911,72 @@ export interface components {
             header: string;
             /** Field */
             field: string | null;
+        };
+        /**
+         * ComplianceFinding
+         * @description One phrase that may break a policy rule. Decision support for a reviewer, not a verdict.
+         */
+        ComplianceFinding: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "title" | "remarks";
+            /** Rule Id */
+            rule_id: string;
+            /** Rule Title */
+            rule_title: string;
+            /** Category */
+            category: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "low" | "medium" | "high";
+            /** Confidence */
+            confidence: number;
+            /** Evidence */
+            evidence: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Explanation */
+            explanation: string;
+            /** Suggestion */
+            suggestion: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "rule" | "model";
+        };
+        /**
+         * ComplianceScan
+         * @description What a scan found. Stored on the run; the policy is copied so the record stands alone.
+         */
+        ComplianceScan: {
+            /** Policy Id */
+            policy_id: string;
+            /** Policy Version */
+            policy_version: string;
+            /** Policy Name */
+            policy_name: string;
+            /** Policy Notice */
+            policy_notice: string;
+            /** Jurisdiction */
+            jurisdiction: string;
+            /** Findings */
+            findings: components["schemas"]["ComplianceFinding"][];
+            /** Model Checked */
+            model_checked: boolean;
+            /** Model Note */
+            model_note: string | null;
+            /**
+             * Model Dropped
+             * @default 0
+             */
+            model_dropped: number;
         };
         /**
          * CurrentOrganisationOut
@@ -1851,6 +1942,46 @@ export interface components {
             };
             /** Errors */
             errors: components["schemas"]["ProblemOut"][];
+        };
+        /**
+         * ScanOut
+         * @description One policy check of a listing's title and remarks.
+         */
+        ScanOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Status */
+            status: string;
+            /** Listing Version */
+            listing_version: number;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Model Version */
+            model_version: string | null;
+            output: components["schemas"]["ComplianceScan"] | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Is Demo */
+            is_demo: boolean;
         };
         /** StatusChangeOut */
         StatusChangeOut: {
@@ -4906,6 +5037,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_scans_api_v1_listings__listing_id__compliance_scans_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_scan_api_v1_listings__listing_id__compliance_scans_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -67,3 +67,19 @@ def test_gemini_locates_a_sign_with_a_phone_number() -> None:
     assert all("98765" not in (r.note or "") for r in result.regions)
     # The sign is in the lower right; its box should be there too.
     assert any(r.box[0] + r.box[2] > 0.6 and r.box[1] > 0.4 for r in result.regions)
+
+
+def test_gemini_reviews_listing_text_against_the_policy() -> None:
+    """Made-up remarks with a Hinglish restriction that the English rules do not match."""
+    from app.modules.compliance import service as compliance
+    from app.modules.compliance.policy import INDIA_POLICY
+    from app.modules.compliance.providers import GeminiTextReviewer
+
+    key = _key()
+    settings = get_settings()
+    texts = {"title": "2 BHK in Powai", "remarks": "Sunny flat near the lake. Sirf shakahari log."}
+    reviewer = GeminiTextReviewer(key, settings.gemini_model, settings.ai_timeout_seconds)
+    result = reviewer.review(INDIA_POLICY, texts)
+    assert result.provider == "gemini"
+    kept, _ = compliance.model_findings(INDIA_POLICY, texts, result.findings, [])
+    assert any(f.rule_id in ("IN-HP-01", "IN-HP-03") and "shakahari" in f.evidence for f in kept)

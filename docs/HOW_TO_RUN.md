@@ -18,7 +18,7 @@ Sprints 0 to 10 of the plan are done; Sprint 11 (compliance flags) is in progres
 | AI photo suggestions | Ask the AI what the photos show; accept, edit or reject each suggestion | `s7-ai-extraction.md`, `s8-ai-review.md` |
 | Privacy redaction | Blur faces, plates, phone numbers, watermarks and signs in a copy; approve or reject it | `s9-redaction.md` |
 | Import | Check and import a CSV of listings; see where an imported listing came from | `s10-import.md` |
-| Compliance flags | Not visible in the app yet (rule check only, tested by `tests/test_compliance_rules.py`) | `s11-compliance.md` |
+| Compliance flags | Check a listing's title and remarks against an illustrative policy (API only so far) | `s11-compliance.md` |
 
 ## 1. Prerequisites
 
@@ -123,7 +123,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17: API 225 passed, 2 deselected (the deselected ones are live Gemini tests); web 52 passed. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17: API 233 passed, 2 deselected (the deselected ones are live Gemini tests); web 52 passed. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
@@ -212,7 +212,16 @@ Do these in order in http://localhost:5173. Sign out with the button in the head
 
 ### 6.9 Compliance flags (Sprint 11, in progress)
 
-Nothing to test in the app yet. The rule check runs in `tests/test_compliance_rules.py`. This section will list the steps when the Sprint 11 screens are built.
+No screen yet (chunk 4 adds it). Test through the API (see 6.10 for signing in with curl; the worker must be running):
+
+1. As `sunrise.agent@demo.example.com`, create a listing whose remarks say `Jain families only. No bachelors.`
+2. `POST /api/v1/listings/{id}/compliance/scans` returns 202 with status `queued`.
+3. `GET` the same path. Once `succeeded`, `output.findings` lists `IN-HP-01` ("Jain families only") and `IN-HP-04` ("No bachelors"), each with evidence, offsets, severity, confidence, explanation and suggestion. `output.policy_notice` says it is not legal advice.
+4. Without `GEMINI_API_KEY`: `is_demo` is true and `output.model_checked` is false with the reason. With a key, Hinglish such as `Sirf shakahari log` should also be found, marked `source: "model"`.
+5. Submit a listing for review. A scan starts by itself (audit `compliance.scan_requested` with trigger `submitted`).
+6. As `harbour.admin@demo.example.com`, the same path for a shared Sunrise listing returns 404: scans are internal to the owning organisation.
+
+The listing itself never changes. Reviewing findings comes in Sprint 11 chunk 3.
 
 ### 6.10 API checks
 

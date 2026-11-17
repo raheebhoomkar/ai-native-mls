@@ -11,6 +11,7 @@ from app.core.pagination import Page, PageParamsDep
 from app.modules.audit import service as audit
 from app.modules.auth import service as auth
 from app.modules.auth.deps import client_ip
+from app.modules.compliance import service as compliance
 from app.modules.listings import service
 from app.modules.listings.models import Listing, Property
 from app.modules.listings.schemas import (
@@ -261,6 +262,11 @@ def transition_listing(
         listing.id,
         {"from": previous, "to": listing.status},
     )
+    # Submitting for review starts a policy check for the reviewer.
+    if listing.status == "pending_review" and (
+        run := compliance.scan_on_submit(session, ctx, listing.id)
+    ):
+        compliance.record_requested(session, ctx, run, client_ip(request))
     session.refresh(listing)
     return _listings_out(session, ctx, [listing])[0]
 
