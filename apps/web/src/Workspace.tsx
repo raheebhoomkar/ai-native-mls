@@ -14,6 +14,7 @@ import {
   ROLE_LABELS,
   setActiveOrganisation,
 } from "./api";
+import { ApiKeys } from "./ApiKeys";
 import { ComplianceQueue } from "./ComplianceQueue";
 import { Monitor } from "./Monitor";
 import { ListingDetail } from "./ListingDetail";
@@ -137,6 +138,7 @@ export function Workspace({
   const canSeeMembers = organisation?.my_permissions.includes("member:read");
   const canSeeListings = organisation?.my_permissions.includes("listing:read");
   const canReview = organisation?.my_permissions.includes("listing:publish");
+  const canManageKeys = organisation?.my_permissions.includes("member:manage");
 
   return (
     <>
@@ -149,6 +151,7 @@ export function Workspace({
           {canReview && <NavLink to="/compliance">Review queue</NavLink>}
           {canSeeListings && <NavLink to="/monitor">Monitor</NavLink>}
           {canSeeMembers && <NavLink to="/members">Members</NavLink>}
+          {canManageKeys && <NavLink to="/api-keys">API keys</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
           {isPlatformAdmin && <NavLink to="/admin">Platform</NavLink>}
         </nav>
@@ -254,6 +257,18 @@ export function Workspace({
               <ComplianceQueue organisation={organisation} />
             ) : current.state === "ready" || current.state === "error" ? (
               <p>You cannot review listings in this organisation.</p>
+            ) : (
+              <p>Loading…</p>
+            )
+          }
+        />
+        <Route
+          path="/api-keys"
+          element={
+            organisation && canManageKeys ? (
+              <ApiKeys organisation={organisation} />
+            ) : current.state === "ready" || current.state === "error" ? (
+              <p>Only administrators manage API keys.</p>
             ) : (
               <p>Loading…</p>
             )

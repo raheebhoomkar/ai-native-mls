@@ -11,6 +11,8 @@ from app.modules.ai.redaction_router import (
 )
 from app.modules.ai.router import router as ai_router
 from app.modules.ai.router import runs_router as ai_runs_router
+from app.modules.apikeys import middleware as apikeys_middleware
+from app.modules.apikeys.router import router as apikeys_router
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.compliance.router import compliance_router, listing_scans_router
@@ -41,6 +43,8 @@ def create_app() -> FastAPI:
         redoc_url=None,
         openapi_url=f"{API_PREFIX}/openapi.json" if docs_enabled else None,
     )
+    # Added before the error handling, so it runs inside it and sees the request ID.
+    apikeys_middleware.install(app)
     install_error_handling(app)
 
     # Each module registers its router here. A module reads another module's data only
@@ -69,6 +73,7 @@ def create_app() -> FastAPI:
     v1.include_router(listing_workflows_router)
     v1.include_router(workflows_router)
     v1.include_router(jobs_router)
+    v1.include_router(apikeys_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

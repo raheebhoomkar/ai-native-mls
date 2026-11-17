@@ -1100,6 +1100,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Api Keys
+         * @description The organisation's keys, newest first, without their secrets.
+         */
+        get: operations["list_api_keys_api_v1_api_keys_get"];
+        put?: never;
+        /**
+         * Create Api Key
+         * @description Create a key that acts as you, limited to its scopes. Administrators only; not with
+         *     an API key. The full key is in this answer only.
+         */
+        post: operations["create_api_key_api_v1_api_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/api-keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Api Key
+         * @description Revoke a key at once. It cannot be used again.
+         */
+        delete: operations["revoke_api_key_api_v1_api_keys__key_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1185,6 +1230,50 @@ export interface components {
             };
             /** Can Review */
             can_review: boolean;
+        };
+        /** ApiKeyIn */
+        ApiKeyIn: {
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes: string[];
+            /**
+             * Rate Limit Per Minute
+             * @default 60
+             */
+            rate_limit_per_minute: number;
+        };
+        /** ApiKeyOut */
+        ApiKeyOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Prefix */
+            prefix: string;
+            /** Scopes */
+            scopes: string[];
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute: number;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Requests Last Minute */
+            requests_last_minute: number;
         };
         /**
          * AppealDecisionIn
@@ -1490,6 +1579,43 @@ export interface components {
             can_review: boolean;
             /** Can Appeal */
             can_appeal: boolean;
+        };
+        /** CreatedApiKeyOut */
+        CreatedApiKeyOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Prefix */
+            prefix: string;
+            /** Scopes */
+            scopes: string[];
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute: number;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Requests Last Minute */
+            requests_last_minute: number;
+            /**
+             * Key
+             * @description The full key. Shown once; store it now.
+             */
+            key: string;
         };
         /**
          * CurrentOrganisationOut
@@ -3411,6 +3537,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3464,6 +3592,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3514,6 +3644,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 user_id: string;
@@ -3564,6 +3696,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 user_id: string;
@@ -3621,6 +3755,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3671,6 +3807,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3725,6 +3863,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 invitation_id: string;
@@ -3862,6 +4002,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3918,6 +4060,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3986,6 +4130,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4058,6 +4204,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -4128,6 +4276,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -4202,6 +4352,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -4270,6 +4422,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -4344,6 +4498,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -4438,6 +4594,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4506,6 +4664,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4602,6 +4762,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4679,6 +4841,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4749,6 +4913,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4817,6 +4983,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4891,6 +5059,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4968,6 +5138,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5038,6 +5210,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5108,6 +5282,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5199,6 +5375,8 @@ export interface operations {
                 "content-type"?: string;
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
                 "content-length"?: number | null;
             };
             path: {
@@ -5295,6 +5473,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 asset_id: string;
@@ -5381,6 +5561,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 asset_id: string;
@@ -5521,6 +5703,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5591,6 +5775,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5661,6 +5847,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -5735,6 +5923,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 asset_id: string;
@@ -5805,6 +5995,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5875,6 +6067,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -5949,6 +6143,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6017,6 +6213,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6089,6 +6287,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6161,6 +6361,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6231,6 +6433,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6301,6 +6505,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6371,6 +6577,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -6446,6 +6654,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -6521,6 +6731,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -6596,6 +6808,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6664,6 +6878,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6725,6 +6941,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6790,6 +7008,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6849,6 +7069,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6919,6 +7141,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -6992,6 +7216,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7060,6 +7286,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -7130,6 +7358,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -7200,6 +7430,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -7272,6 +7504,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7340,6 +7574,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 job_id: string;
@@ -7386,6 +7622,193 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_api_keys_api_v1_api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_api_key_api_v1_api_keys_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedApiKeyOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_api_key_api_v1_api_keys__key_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

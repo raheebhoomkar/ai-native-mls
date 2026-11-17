@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 16 of the plan are done (Phases A and B, and S15–S16 of Phase C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 17 of the plan are done (Phases A and B, and S15–S17 of Phase C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -23,6 +23,7 @@ Sprints 0 to 16 of the plan are done (Phases A and B, and S15–S16 of Phase C).
 | Semantic search | Describe the home in your own words; listings are ranked by match, with the reason shown | `s13-semantic-search.md` |
 | Valuation | Estimate a range from comparable reported sales, with comps, assumptions and a days-on-market simulation | `s14-valuation.md` |
 | Workflow | Run every step on a listing at once (locate, read photos, policy check, human review, search index, valuation); it pauses for review, blocks approval until done; cancel, retry; Monitor page | `s15-workflow-core.md`, `s16-review-gate-monitor.md` |
+| Public API | Create API keys with scopes and a rate limit; call the API from another program with a key; safe retries with `Idempotency-Key` | `s17-public-api.md`, `docs/api/developer-guide.md` |
 
 ## 1. Prerequisites
 
@@ -280,6 +281,14 @@ Estimates use sold listings the caller may see whose sale price the listing agen
 7. Start a run and click "Cancel run": the status reads "Cancelled". Click "Retry run": finished steps are kept and the rest run again.
 8. Open "Monitor" in the nav. "Not finished" lists runs still going; switch to "Failed" or "All". As `sunrise.admin@demo.example.com` a "Failed background jobs" list with "Retry job" appears below; agents do not see it.
 9. Sign in as `harbour.admin@demo.example.com` and open a Sunrise listing that is shared: there is no Workflow section, and Monitor shows no Sunrise runs.
+
+### 6.12b API keys and the sample client
+
+1. Sign in as `sunrise.admin@demo.example.com`, open "API keys", name a key, tick both scopes, set 5 requests per minute, click "Create key". The key appears once in a notice; copy it.
+2. In a terminal from the repository root: `MLS_API_URL=http://localhost:8000/api/v1 MLS_API_KEY=<key> python3 examples/mls_client.py list` prints up to 10 Sunrise listings. `... create` prints "Created draft listing <id>"; it shows in the app as a draft.
+3. Run `list` several times quickly: after 5 requests in a minute the client waits about a minute (HTTP 429) and then prints the list.
+4. Back on "API keys" the key shows its use this minute and when it was last used. Click "Revoke": the client now exits with `HTTP 401 invalid_api_key`.
+5. Sign in as `sunrise.agent@demo.example.com`: there is no "API keys" link.
 
 ### 6.13 API checks
 
