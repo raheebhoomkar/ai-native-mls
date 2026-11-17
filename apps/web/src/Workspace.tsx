@@ -15,6 +15,7 @@ import {
   setActiveOrganisation,
 } from "./api";
 import { ComplianceQueue } from "./ComplianceQueue";
+import { Monitor } from "./Monitor";
 import { ListingDetail } from "./ListingDetail";
 import { EditListing, NewListing } from "./ListingForm";
 import { ListingImport } from "./ListingImport";
@@ -146,6 +147,7 @@ export function Workspace({
           </NavLink>
           {canSeeListings && <NavLink to="/listings">Listings</NavLink>}
           {canReview && <NavLink to="/compliance">Review queue</NavLink>}
+          {canSeeListings && <NavLink to="/monitor">Monitor</NavLink>}
           {canSeeMembers && <NavLink to="/members">Members</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
           {isPlatformAdmin && <NavLink to="/admin">Platform</NavLink>}
@@ -252,6 +254,18 @@ export function Workspace({
               <ComplianceQueue organisation={organisation} />
             ) : current.state === "ready" || current.state === "error" ? (
               <p>You cannot review listings in this organisation.</p>
+            ) : (
+              <p>Loading…</p>
+            )
+          }
+        />
+        <Route
+          path="/monitor"
+          element={
+            organisation && canSeeListings ? (
+              <Monitor organisation={organisation} />
+            ) : current.state === "ready" || current.state === "error" ? (
+              <p>You cannot see workflows in this organisation.</p>
             ) : (
               <p>Loading…</p>
             )

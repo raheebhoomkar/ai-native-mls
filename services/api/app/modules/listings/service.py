@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -399,6 +399,12 @@ def update_listing(
     return listing, changes
 
 
+# Checks that must pass before a listing is approved (pending_review to active). Modules add
+# theirs when imported (compliance, workflow); each raises AppError to refuse. They run inside
+# `transition_listing`, the one place a status changes, so no caller can skip them.
+APPROVAL_GUARDS: list[Callable[[Session, UUID], None]] = []
+
+
 def transition_listing(
     session: Session, ctx: TenantContext, listing_id: UUID, data: TransitionRequest
 ) -> tuple[Listing, str]:
@@ -417,6 +423,9 @@ def transition_listing(
         )
     if data.to not in allowed_transitions(ctx, listing):
         raise _forbidden()
+    if previous == "pending_review" and data.to == "active":
+        for guard in APPROVAL_GUARDS:
+            guard(session, listing.id)
 
     now = datetime.now(UTC)
     listing.status = data.to

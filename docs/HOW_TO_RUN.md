@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 15 of the plan are done (Phases A and B, and S15 of Phase C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 16 of the plan are done (Phases A and B, and S15–S16 of Phase C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -22,7 +22,7 @@ Sprints 0 to 15 of the plan are done (Phases A and B, and S15 of Phase C). Per-s
 | Maps and location | See where a property is and how exact the point is; set it by hand; show listings on a map and search the visible area | `s12-geospatial.md` |
 | Semantic search | Describe the home in your own words; listings are ranked by match, with the reason shown | `s13-semantic-search.md` |
 | Valuation | Estimate a range from comparable reported sales, with comps, assumptions and a days-on-market simulation | `s14-valuation.md` |
-| Workflow | Run every step on a listing at once (locate, read photos, policy check, search index, valuation) and follow each step | `s15-workflow-core.md` |
+| Workflow | Run every step on a listing at once (locate, read photos, policy check, human review, search index, valuation); it pauses for review, blocks approval until done; cancel, retry; Monitor page | `s15-workflow-core.md`, `s16-review-gate-monitor.md` |
 
 ## 1. Prerequisites
 
@@ -273,9 +273,13 @@ Estimates use sold listings the caller may see whose sale price the listing agen
 
 1. Sign in as `sunrise.agent@demo.example.com` and open one of your listings.
 2. In "Workflow", click "Run workflow". The button changes to "Workflow running…" and each step shows its status.
-3. Within about a minute the status reads "Finished." Steps show "Finished" or "Skipped" with the reason (for example, no photos). The Policy check and Valuation sections now show the new check and estimate.
-4. Click "Run workflow" twice quickly: the second click is refused while a run is active.
-5. Sign in as `harbour.admin@demo.example.com` and open the same listing if it is shared: there is no Workflow section.
+3. On a listing with photos the status soon reads "Waiting for a person to review." The Human review step names what waits (photo suggestions, policy findings); Add to search and Estimate value stay "Not started".
+4. Submit the listing for review, then sign in as `sunrise.admin@demo.example.com` and try to approve it: refused with "The workflow on this listing has not finished and waits for a review."
+5. Decide every photo suggestion (agent) and every policy finding (admin). Within a few seconds the run goes on by itself and reads "Finished." Approval now works.
+6. On a listing without photos the run finishes without pausing; Read the photos shows "Skipped" with the reason.
+7. Start a run and click "Cancel run": the status reads "Cancelled". Click "Retry run": finished steps are kept and the rest run again.
+8. Open "Monitor" in the nav. "Not finished" lists runs still going; switch to "Failed" or "All". As `sunrise.admin@demo.example.com` a "Failed background jobs" list with "Retry job" appears below; agents do not see it.
+9. Sign in as `harbour.admin@demo.example.com` and open a Sunrise listing that is shared: there is no Workflow section, and Monitor shows no Sunrise runs.
 
 ### 6.13 API checks
 

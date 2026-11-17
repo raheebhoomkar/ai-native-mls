@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,9 +10,10 @@ from app.core.db import SessionDep
 from app.core.errors import ErrorResponse
 from app.modules.audit import service as audit
 from app.modules.auth.deps import client_ip
+from app.modules.listings.models import Listing
 from app.modules.organisations.deps import TenantContext, require
 from app.modules.workflow import service
-from app.modules.workflow.models import WorkflowRun
+from app.modules.workflow.models import RUN_STATUSES, WorkflowRun
 
 listing_workflows_router = APIRouter(prefix="/listings/{listing_id}/workflows", tags=["workflow"])
 workflows_router = APIRouter(prefix="/workflows", tags=["workflow"])
@@ -37,6 +38,7 @@ class StepOut(BaseModel):
 class WorkflowRunOut(BaseModel):
     id: UUID
     listing_id: UUID
+    listing_title: str
     workflow: str
     workflow_version: str
     status: str
@@ -59,7 +61,12 @@ def run_out(session: Session, run: WorkflowRun) -> WorkflowRunOut:
     ]
     return WorkflowRunOut.model_validate(
         {
-            **{k: getattr(run, k) for k in WorkflowRunOut.model_fields if k != "steps"},
+            **{
+                k: getattr(run, k)
+                for k in WorkflowRunOut.model_fields
+                if k not in ("steps", "listing_title")
+            },
+            "listing_title": session.get_one(Listing, run.listing_id).title,
             "steps": steps,
         }
     )
@@ -89,6 +96,54 @@ def start_workflow(
 def list_workflows(listing_id: UUID, session: SessionDep, ctx: CanRead) -> list[WorkflowRunOut]:
     """The 20 newest runs on a listing, newest first. Owning organisation only."""
     return [run_out(session, run) for run in service.list_runs(session, ctx, listing_id)]
+
+
+@workflows_router.get("", responses=_ERRORS)
+def list_org_workflows(
+    session: SessionDep,
+    ctx: CanRead,
+    status: Annotated[
+        str | None,
+        Query(
+            pattern=f"^(active|{'|'.join(RUN_STATUSES)})$",
+            description="A run status, or `active` for every run that has not finished.",
+        ),
+    ] = None,
+) -> list[WorkflowRunOut]:
+    """The monitor: the organisation's 50 newest runs, newest first."""
+    return [run_out(session, run) for run in service.list_org_runs(session, ctx, status)]
+
+
+def _control(
+    action: str, run: WorkflowRun, request: Request, session: Session, ctx: TenantContext
+) -> WorkflowRunOut:
+    audit.record(
+        session,
+        f"workflow.{action}",
+        actor_user_id=ctx.user.id,
+        organisation_id=ctx.organisation_id,
+        target_type="listing",
+        target_id=str(run.listing_id),
+        ip_address=client_ip(request),
+        detail={"run_id": str(run.id)},
+    )
+    return run_out(session, run)
+
+
+@workflows_router.post("/{run_id}/cancel", responses=_ERRORS)
+def cancel_workflow(
+    run_id: UUID, request: Request, session: SessionDep, ctx: CanRead
+) -> WorkflowRunOut:
+    """Stop a run that has not finished. Editors of the listing only."""
+    return _control("cancelled", service.cancel(session, ctx, run_id), request, session, ctx)
+
+
+@workflows_router.post("/{run_id}/retry", status_code=202, responses=_ERRORS)
+def retry_workflow(
+    run_id: UUID, request: Request, session: SessionDep, ctx: CanRead
+) -> WorkflowRunOut:
+    """Run a failed or cancelled run again; finished steps are kept. Editors only."""
+    return _control("retried", service.retry(session, ctx, run_id), request, session, ctx)
 
 
 @workflows_router.get("/{run_id}", responses=_ERRORS)

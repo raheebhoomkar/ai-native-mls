@@ -619,3 +619,6 @@ def queue(session: Session, ctx: TenantContext) -> list[QueueItem]:
                 continue
             items.append(QueueItem(run, listing, index, findings[index], item, since))
     return sorted(items, key=lambda i: (i.waiting_since, i.index))
+
+
+listings.APPROVAL_GUARDS.append(ensure_approvable)

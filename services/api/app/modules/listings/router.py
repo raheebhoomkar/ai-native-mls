@@ -348,10 +348,6 @@ def transition_listing(
     listing_id: UUID, body: TransitionRequest, request: Request, session: SessionDep, ctx: CanWrite
 ) -> ListingOut:
     """Change a listing's status. `allowed_transitions` on the listing says what you may request."""
-    if body.to == "active" and service.get_listing(session, ctx, listing_id).status == (
-        "pending_review"
-    ):
-        compliance.ensure_approvable(session, listing_id)
     listing, previous = service.transition_listing(session, ctx, listing_id, body)
     _audit(
         request,

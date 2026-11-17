@@ -11,6 +11,7 @@ export const STEP_LABELS: Record<string, string> = {
   geocode: "Locate the address",
   extract: "Read the photos",
   compliance: "Policy check",
+  review: "Human review",
   index: "Add to search",
   valuation: "Estimate value",
 };
@@ -73,13 +74,11 @@ export function ListingWorkflow({
     return () => clearTimeout(timer);
   }, [active, reloadKey]);
 
-  async function start() {
+  async function post(path: string) {
     setBusy(true);
     setActionError(null);
     try {
-      setRun(
-        await api<Run>(`/listings/${listingId}/workflows`, { method: "POST" }),
-      );
+      setRun(await api<Run>(path, { method: "POST" }));
     } catch (error) {
       setActionError(describeError(error));
     } finally {
@@ -99,9 +98,31 @@ export function ListingWorkflow({
       </p>
       {canRequest && (
         <p>
-          <button type="button" onClick={start} disabled={busy || active}>
+          <button
+            type="button"
+            onClick={() => post(`/listings/${listingId}/workflows`)}
+            disabled={busy || active}
+          >
             {active ? "Workflow running…" : "Run workflow"}
-          </button>
+          </button>{" "}
+          {run && active && (
+            <button
+              type="button"
+              onClick={() => post(`/workflows/${run.id}/cancel`)}
+              disabled={busy}
+            >
+              Cancel run
+            </button>
+          )}
+          {run && ["failed", "cancelled"].includes(run.status) && (
+            <button
+              type="button"
+              onClick={() => post(`/workflows/${run.id}/retry`)}
+              disabled={busy}
+            >
+              Retry run
+            </button>
+          )}
         </p>
       )}
       {loadError && <p role="alert">{loadError}</p>}
@@ -113,6 +134,13 @@ export function ListingWorkflow({
             {STATUS_TEXT[run.status] ?? run.status}
             {run.error ? `: ${run.error}` : "."}
           </p>
+          {run.status === "awaiting_review" && (
+            <p>
+              Decide on the photo suggestions and the policy findings below. The
+              run goes on by itself after each decision. The listing cannot be
+              approved until the run has finished or is cancelled.
+            </p>
+          )}
           <ol aria-label="Workflow steps">
             {run.steps.map((step) => (
               <li key={step.name}>

@@ -1,6 +1,9 @@
 """The listing workflow: one LangGraph graph over the existing AI and data steps.
 
-    geocode -> extract -> compliance -> index -> valuation
+    geocode -> extract -> compliance -> review -> index -> valuation
+
+`review` pauses the run (status `awaiting_review`) while a person still has to decide on the
+photo suggestions or the policy findings; the graph stops there until a decision wakes it.
 
 Each pass is one `workflow.advance` job. The graph runs every step that is not finished;
 a step either finishes, fails, or says it is waiting for background work (a geocode or an
@@ -10,6 +13,7 @@ Steps are idempotent: a finished step is never run again, and a step that starte
 run keeps its ID and waits on that run instead of starting another.
 """
 
+import itertools
 import logging
 import operator
 from collections.abc import Callable, Sequence
@@ -36,6 +40,7 @@ from app.modules.listings import service as listings
 from app.modules.listings.models import Listing, Property
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext
+from app.modules.review import service as review
 from app.modules.search import service as search
 from app.modules.valuation import service as valuation
 from app.modules.valuation.schemas import ValuationRequest
@@ -44,8 +49,8 @@ from app.modules.workflow.models import WorkflowRun, WorkflowStep
 logger = logging.getLogger(__name__)
 
 WORKFLOW = "listing_intake"
-WORKFLOW_VERSION = "1"
-STEPS: tuple[str, ...] = ("geocode", "extract", "compliance", "index", "valuation")
+WORKFLOW_VERSION = "2"
+STEPS: tuple[str, ...] = ("geocode", "extract", "compliance", "review", "index", "valuation")
 # A step that raises an unexpected error is tried again on the next pass, this many times.
 MAX_STEP_ATTEMPTS = 3
 MAX_PASSES = 180  # with POLL, about the 30 minute deadline
@@ -96,6 +101,9 @@ def _agent_run_outcome(c: StepContext, run_id: str) -> Outcome:
         return Outcome("succeeded", output)
     if run.status == "failed":
         return Outcome("failed", output, run.error or "The agent run failed.")
+    job = c.session.get(Job, run.job_id) if run.job_id else None
+    if job is not None and job.status == "failed":  # died without updating its run
+        return Outcome("failed", output, job.last_error or "The agent run's job failed.")
     return Outcome("waiting", output)
 
 
@@ -129,10 +137,45 @@ def step_extract(c: StepContext) -> Outcome:
 def step_compliance(c: StepContext) -> Outcome:
     if "agent_run_id" not in c.step.output:
         _, scans = compliance.list_scans(c.session, c.ctx, c.run.listing_id)
-        running = next((s for s in scans if s.status in ("queued", "running")), None)
+        running = next(
+            (
+                s
+                for s in scans
+                if s.status in ("queued", "running") and compliance.stalled(c.session, s) is None
+            ),
+            None,
+        )
         run = running or compliance.request_scan(c.session, c.ctx, c.run.listing_id)[1]
         return Outcome("waiting", {"agent_run_id": str(run.id)})
     return _agent_run_outcome(c, c.step.output["agent_run_id"])
+
+
+def step_review(c: StepContext) -> Outcome:
+    """Pause until people have decided on what the AI steps produced."""
+    if any(c.statuses.get(name) in (None, "pending", "waiting") for name in REVIEWED):
+        return Outcome("waiting", {"reason": "Waiting for the AI steps.", "awaiting_review": False})
+    waiting_on: list[str] = []
+    extract = c.session.scalars(
+        select(WorkflowStep).where(WorkflowStep.run_id == c.run.id, WorkflowStep.name == "extract")
+    ).first()
+    run_id = extract.output.get("agent_run_id") if extract else None
+    if run_id is not None:
+        task = review.get_task_for(c.session, extraction.REVIEW_SUBJECT, run_id)
+        if task is not None and task.status == "open":
+            waiting_on.append("photo suggestions")
+    try:
+        compliance.ensure_approvable(c.session, c.run.listing_id)
+    except AppError:
+        waiting_on.append("policy findings")
+    if waiting_on:
+        return Outcome(
+            "waiting",
+            {
+                "reason": f"Waiting for a person to review the {' and '.join(waiting_on)}.",
+                "awaiting_review": True,
+            },
+        )
+    return Outcome("succeeded", {"reason": None, "awaiting_review": False})
 
 
 def step_index(c: StepContext) -> Outcome:
@@ -152,10 +195,14 @@ def step_valuation(c: StepContext) -> Outcome:
     return Outcome("succeeded", {"valuation_id": str(result.id), "status": result.status})
 
 
+# The steps whose output a person reviews.
+REVIEWED: tuple[str, ...] = ("extract", "compliance")
+
 STEP_FUNCTIONS: dict[str, Callable[[StepContext], Outcome]] = {
     "geocode": step_geocode,
     "extract": step_extract,
     "compliance": step_compliance,
+    "review": step_review,
     "index": step_index,
     "valuation": step_valuation,
 }
@@ -204,21 +251,31 @@ def _node(name: str) -> Callable[[State, RunnableConfig], dict[str, Any]]:
         run = session.get_one(WorkflowRun, UUID(state["run_id"]))
         step = session.scalars(
             select(WorkflowStep).where(WorkflowStep.run_id == run.id, WorkflowStep.name == name)
-        ).one()
+        ).first()
+        if step is None:  # a run of an older workflow version, without this step
+            return {"statuses": {name: "skipped"}}
         status = _run_step(session, configurable["ctx"], run, step, state["statuses"])
         return {"statuses": {name: status}}
 
     return node
 
 
+def _after_review(state: State) -> str:
+    """The pause: nothing after `review` runs until the review step has finished."""
+    return "go" if state["statuses"].get("review") in ("succeeded", "skipped") else "pause"
+
+
 def build_graph() -> Any:
     graph = StateGraph(State)
-    previous = START
     for name in STEPS:
         graph.add_node(name, _node(name))  # type: ignore[call-overload]
-        graph.add_edge(previous, name)
-        previous = name
-    graph.add_edge(previous, END)
+    graph.add_edge(START, STEPS[0])
+    for previous, name in itertools.pairwise(STEPS):
+        if previous == "review":
+            graph.add_conditional_edges("review", _after_review, {"go": name, "pause": END})
+        else:
+            graph.add_edge(previous, name)
+    graph.add_edge(STEPS[-1], END)
     return graph.compile()
 
 
@@ -323,7 +380,10 @@ def _context(session: Session, run: WorkflowRun) -> TenantContext | None:
 
 
 def settle(run: WorkflowRun, steps: Sequence[WorkflowStep]) -> str:
-    """The run's status from its steps': waiting while any can still move, then the outcome."""
+    """The run's status from its steps': paused for review, waiting while any can still
+    move, then the outcome."""
+    if any(s.status == "waiting" and s.output.get("awaiting_review") for s in steps):
+        return "awaiting_review"
     statuses = {step.status for step in steps}
     if statuses & {"pending", "waiting"}:
         return "waiting"
@@ -359,9 +419,106 @@ def advance(session: Session, job: Job) -> None:
     )
     steps = steps_of(session, run)
     status = settle(run, steps)
+    if status == "awaiting_review":
+        run.status = status  # no next pass: a review decision wakes the run (see `wake`)
+        return
     if status == "waiting":
         run.status = "waiting"
         enqueue_pass(session, run, POLL)
         return
     failed = [f"{s.name}: {s.error or 'failed'}" for s in steps if s.status == "failed"]
     _finish(run, status, "; ".join(failed) or None)
+
+
+# --- Control: wake, cancel, retry, publication gate ----------------------------------------
+
+
+def _fresh_budget(run: WorkflowRun) -> None:
+    run.passes = 0
+    run.deadline = datetime.now(UTC) + DEADLINE
+
+
+def wake(session: Session, listing_id: UUID) -> None:
+    """A review decision was made on the listing: let a paused run check again.
+
+    Called by the routers that record decisions. The run's machine budget starts again,
+    since the time a person took to review is not the machine's.
+    """
+    run = session.scalars(
+        select(WorkflowRun)
+        .where(WorkflowRun.listing_id == listing_id, WorkflowRun.status == "awaiting_review")
+        .with_for_update()
+    ).first()
+    if run is None:
+        return
+    run.status = "waiting"
+    _fresh_budget(run)
+    enqueue_pass(session, run)
+
+
+def _controllable(session: Session, ctx: TenantContext, run_id: UUID) -> WorkflowRun:
+    run = get_run(session, ctx, run_id)
+    _own_editable(session, ctx, run.listing_id)
+    session.refresh(run, with_for_update=True)
+    return run
+
+
+def cancel(session: Session, ctx: TenantContext, run_id: UUID) -> WorkflowRun:
+    """Stop a run. Agent runs it already started carry on; their results stay visible."""
+    run = _controllable(session, ctx, run_id)
+    if run.status not in ACTIVE:
+        raise AppError(409, "workflow_not_active", "Only a run that has not finished can stop.")
+    _finish(run, "cancelled", f"Cancelled by {ctx.user.email}.")
+    return run
+
+
+def retry(session: Session, ctx: TenantContext, run_id: UUID) -> WorkflowRun:
+    """Run a failed or cancelled run again. Finished steps are kept; failed steps start over."""
+    run = _controllable(session, ctx, run_id)
+    if run.status not in ("failed", "cancelled"):
+        raise AppError(409, "workflow_not_retryable", "Only a failed or cancelled run can retry.")
+    if active_run(session, run.listing_id) is not None:
+        raise AppError(409, "workflow_in_progress", "A workflow is already running here.")
+    for step in steps_of(session, run):
+        if step.status in ("succeeded", "skipped"):
+            continue
+        if step.status == "failed":
+            step.output = {}  # a failed agent run is not waited on again; a new one starts
+        step.status = "pending"
+        step.attempts = 0
+        step.error = None
+        step.finished_at = None
+    run.status = "queued"
+    run.error = None
+    run.finished_at = None
+    _fresh_budget(run)
+    enqueue_pass(session, run)
+    return run
+
+
+def list_org_runs(
+    session: Session, ctx: TenantContext, status: str | None, limit: int = 50
+) -> Sequence[WorkflowRun]:
+    """The organisation's runs, newest first, for the monitor."""
+    query = select(WorkflowRun).where(WorkflowRun.organisation_id == ctx.organisation_id)
+    if status == "active":
+        query = query.where(WorkflowRun.status.in_(ACTIVE))
+    elif status is not None:
+        query = query.where(WorkflowRun.status == status)
+    return session.scalars(query.order_by(WorkflowRun.created_at.desc()).limit(limit)).all()
+
+
+def ensure_no_open_run(session: Session, listing_id: UUID) -> None:
+    """Publication gate: a listing is not approved while its workflow is still going."""
+    run = active_run(session, listing_id)
+    if run is not None:
+        raise AppError(
+            409,
+            "workflow_in_progress",
+            "The workflow on this listing has not finished"
+            + (" and waits for a review" if run.status == "awaiting_review" else "")
+            + ". Finish or cancel it before approval.",
+        )
+
+
+listings.APPROVAL_GUARDS.append(ensure_no_open_run)

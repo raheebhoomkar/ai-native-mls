@@ -96,3 +96,14 @@ test("readers see the run but no button", async () => {
   expect(screen.getByText(/index down/)).toBeTruthy();
   expect(screen.queryByRole("button")).toBeNull();
 });
+
+test("a failed run can be retried", async () => {
+  stubFetch({
+    "GET /listings/l1/workflows": [[run("failed", [step("index", "failed")])]],
+    "POST /workflows/w1/retry": [run("queued", [step("index", "pending")])],
+  });
+  render(<ListingWorkflow listingId="l1" canRequest />);
+  fireEvent.click(await screen.findByRole("button", { name: "Retry run" }));
+  expect(await screen.findByText("Waiting to start.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Cancel run" })).toBeTruthy();
+});
