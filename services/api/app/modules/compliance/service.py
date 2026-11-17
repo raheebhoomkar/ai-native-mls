@@ -415,6 +415,38 @@ def review_of(session: Session, run: AgentRun) -> tuple[ReviewTask | None, list[
     return task, reviews(task, rows, len(findings_of(run)))
 
 
+# Undecided, confirmed, or waiting on an appeal: the finding still stands.
+BLOCKING_STATES = frozenset({"open", "accepted", "edits_requested", "appealed", "upheld"})
+
+
+def ensure_approvable(session: Session, listing_id: UUID) -> None:
+    """Approval waits until no finding of the newest finished check still stands.
+
+    shortcut: a check still queued or running does not block, so approving right
+    after submit can pass before the check finishes; block on it if that matters.
+    """
+    run = session.scalars(
+        select(AgentRun)
+        .where(
+            AgentRun.listing_id == listing_id,
+            AgentRun.agent == AGENT,
+            AgentRun.status == "succeeded",
+        )
+        .order_by(AgentRun.created_at.desc(), AgentRun.id.desc())
+        .limit(1)
+    ).first()
+    if run is None:
+        return
+    standing = sum(r.state in BLOCKING_STATES for r in review_of(session, run)[1])
+    if standing:
+        raise AppError(
+            409,
+            "compliance_findings_open",
+            f"The policy check has {standing} finding(s) still open or confirmed. "
+            "A reviewer must dismiss them, or an appeal overturn them, before approval.",
+        )
+
+
 def _finding(
     session: Session, ctx: TenantContext, run_id: UUID, index: int
 ) -> tuple[AgentRun, Listing, ReviewTask, ComplianceFinding, FindingReview]:

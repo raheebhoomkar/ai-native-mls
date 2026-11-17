@@ -25,6 +25,7 @@ Scope (from the approved plan and INSTRUCTIONS.md §2.2 and Module 6, second hal
 - **Appeal**: only the listing agent, once per finding, only against `accepted` or `edits_requested`, with a reason. The ruling (`upheld` or `overturned`) needs a reason too.
 - **A newer scan replaces older ones**: when it finishes, the older scans' reviews close (`409 scan_superseded` on any later decision there), unfinished appeals included. The queue only shows open reviews. A scan that finishes late after retries, when a newer one has already finished, gets no review.
 - **Queue** (`GET /api/v1/compliance/queue`): undecided findings and appeals without a ruling, oldest first, in the active organisation, without archived listings or listings where the caller is the agent. Decisions are made on the listing page, where the full text is.
+- **Standing findings block approval** (developer decision, 2026-11-17): moving a listing from pending review to active returns `409 compliance_findings_open` while any finding of the newest finished check is open, confirmed, requested for edits, under appeal, or upheld. Dismissed and overturned findings do not block. `compliance.service.ensure_approvable`, called in `listings/router.py`.
 - **A scan whose job failed outside its handler** (a worker on older code took it) is shown as failed with the job's error and does not block a new check.
 
 ## How to resume
@@ -70,6 +71,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - 2026-11-17, chunk 3 done. Migration widening review decisions; `decide_finding`, `appeal`, `decide_appeal`, `queue`, `_supersede` in `compliance/service.py`; routes in `compliance/router.py`; scan output gains `reviews`, `review_open`, `can_review`, `can_appeal`, `checked_title`, `checked_remarks`. Schemas named `Compliance*Out` (the generated web types clashed with the AI module's `DecisionOut`). `tests/test_compliance_review.py` (7 tests).
 - 2026-11-17, chunk 4 done. `ListingCompliance.tsx` (section on the listing page, owning organisation only), `ComplianceQueue.tsx` (`#/compliance`), nav link and route in `Workspace.tsx`, CSS. `ListingCompliance.test.tsx` (7 tests).
 - 2026-11-17, chunk 5 done. Seed: `[Demo] 2 BHK to let near the IT park` (Sunrise, pending review, flagged remarks, check queued); added on its own so existing databases get it. Browser check in Chrome (below). Fixes from it: "Request edits" stays disabled until a note is typed; no double full stop after a note; the full review trail is listed under an appealed finding; a scan stalled by an old worker shows as failed. Docs: README, RBAC matrix, HOW_TO_RUN 6.9.
+- 2026-11-17, follow-up: standing findings block approval (`ensure_approvable`, test `test_standing_findings_block_approval`). API 242 passed. Old worker (pre-sprint code) stopped.
 
 ## What was built
 
@@ -92,7 +94,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 | Need | Use |
 |---|---|
-| Check listing text before it leaves the organisation (Sprint 17 syndication, public pages) | The newest scan from `compliance.service.list_scans`; its findings' review states. Decide in that sprint whether open or confirmed findings block publishing; nothing blocks today. |
+| Check listing text before it leaves the organisation (Sprint 17 syndication, public pages) | The newest scan from `compliance.service.list_scans`; its findings' review states. Approval already calls `compliance.service.ensure_approvable`; call it before publishing too. |
 | Start a check from another flow (import, workflow in Sprint 15) | `compliance.service.scan_on_submit(session, ctx, listing_id)` (skips if one is running), then `record_requested(...)` for the audit. |
 | A new rule or a changed pattern | Edit `INDIA_POLICY` in `policy.py`, bump `version`, add cases to `tests/test_compliance_rules.py`. Queued scans under the old version fail and ask to be run again. |
 | Another policy (jurisdiction or organisation) | A second `Policy` and a choice in `compliance.service.get_policy()`; scans already store the policy id and version. |
@@ -117,7 +119,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - The policy is illustrative, written for the demo, not reviewed by a lawyer, and not Indian law (INSTRUCTIONS.md §14 question 4 is open). Clear Cooperation monitoring is not built: no applicable rules or lawful data source are confirmed.
 - The rules match English only. Hindi, Marathi and Hinglish wording ("sirf", "keval") needs the Gemini check, which is unverified against the live API so far.
 - Patterns are lists of words. A community or phrase not in the list is missed by the rule check.
-- Findings do not block anything: a listing with confirmed findings can still be approved. Whether they should is a product decision.
+- Approval does not wait for a check that is still queued or running; only the newest finished check counts.
 - A newer scan closes the older review even if an appeal there was waiting; the appeal has to be made again on the new scan.
 - The queue is not paginated (it loads every open review of the organisation).
 - A worker running older code can still take a new job and fail it ("No handler registered"); the scan then shows as failed. Restart every worker after pulling.

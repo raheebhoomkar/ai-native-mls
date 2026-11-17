@@ -16,7 +16,7 @@ from app.modules.auth.models import User
 from app.modules.organisations import service as organisations
 from app.modules.organisations.models import Organisation
 from tests.test_compliance_scans import scan, scans_url
-from tests.test_listings import LISTINGS, brokerage, new_listing
+from tests.test_listings import LISTINGS, brokerage, move, new_listing
 from tests.test_media import Brokerage
 from tests.test_media_processing import run_jobs
 
@@ -220,3 +220,18 @@ def test_a_late_older_scan_does_not_replace_a_newer_one(db: Session, brokerage: 
     run_jobs(db)
     states = {s["id"]: s["review_open"] for s in agent.get(scans_url(listing)).json()}
     assert states == {newer["id"]: True, late["id"]: False}
+
+
+def test_standing_findings_block_approval(db: Session, brokerage: Brokerage) -> None:
+    agent, broker = brokerage[2]["agent"], brokerage[2]["broker"]
+    listing = move(agent, new_listing(agent, remarks=REMARKS), "pending_review")
+    run_jobs(db)  # the check started by submitting
+    scan_id = agent.get(scans_url(listing)).json()[0]["id"]
+    url = f"{LISTINGS}/{listing['id']}/transitions"
+    approve = {"to": "active", "version": listing["version"]}
+    blocked = broker.post(url, json=approve)
+    assert blocked.status_code == 409 and code(blocked) == "compliance_findings_open"
+    decide(broker, scan_id, 0, "dismissed")
+    assert code(broker.post(url, json=approve)) == "compliance_findings_open"  # one still open
+    decide(broker, scan_id, 1, "dismissed")
+    assert broker.post(url, json=approve).status_code == 200

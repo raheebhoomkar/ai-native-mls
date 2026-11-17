@@ -226,6 +226,7 @@ The worker must be running. The seed adds `[Demo] 2 BHK to let near the IT park`
 10. Submitting any listing for review starts a check by itself.
 11. As `harbour.admin@demo.example.com`, open a shared Sunrise listing: there is no Policy check section, and `GET /api/v1/listings/{id}/compliance/scans` returns 404.
 12. Audit log (`GET /api/v1/audit-events`): `compliance.scan_requested`, `compliance.finding_decided`, `compliance.finding_appealed`, `compliance.appeal_decided`, each with the rule and policy version.
+13. Approving a listing (pending review to active) while a finding of its newest finished check is open, confirmed, under appeal or upheld fails with "The policy check has N finding(s) still open or confirmed..." (`409 compliance_findings_open`). Dismiss the findings, or overturn them on appeal, and approval works.
 
 The listing's text never changes because of a check or a decision; the agent edits it.
 
