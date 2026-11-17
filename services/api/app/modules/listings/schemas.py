@@ -64,9 +64,45 @@ class PropertyUpdate(PropertyCreate):
     version: Version
 
 
+Latitude = Annotated[Decimal, Field(ge=-90, le=90, max_digits=9, decimal_places=7)]
+Longitude = Annotated[Decimal, Field(ge=-180, le=180, max_digits=10, decimal_places=7)]
+
+
+class LocationIn(BaseModel):
+    """A point set by hand. Kept when the address changes; set it again to correct it."""
+
+    latitude: Latitude
+    longitude: Longitude
+
+
+class Location(LocationIn):
+    source: Literal["demo", "nominatim", "manual"]
+    precision: Literal["address", "locality", "city"] = Field(
+        description="How close the point is to the property: the building, the area or the city."
+    )
+    located_at: datetime
+    attribution: str | None = Field(description="Credit the data source requires, if any.")
+
+
+class EnrichmentItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    label: str
+    value: str | None
+    source: str | None
+    retrieved_at: datetime | None
+    reason: str | None = Field(description="Why there is no value. Set exactly when value is null.")
+
+
 class PropertyOut(PropertyCreate):
     id: UUID
     organisation_id: UUID
+    location: Location | None
+    location_status: Literal["pending", "located", "not_found", "failed"] | None = Field(
+        description="None for properties created before locations existed."
+    )
+    location_error: str | None
     version: int
     created_at: datetime
     updated_at: datetime
@@ -143,6 +179,9 @@ class ListingOut(BaseModel):
     # Status changes you may request now, given your role.
     allowed_transitions: list[Status]
     can_edit: bool
+    distance_km: float | None = Field(
+        default=None, description="From near_lat, near_lon, in km to 2 decimals; only then."
+    )
     version: int
     created_at: datetime
     updated_at: datetime
@@ -194,3 +233,26 @@ class ListingFilters(BaseModel):
     ) = None
     include_archived: bool = False
     sort: Literal["newest", "oldest", "price_asc", "price_desc"] = "newest"
+    # Search filters, not stored values: plain floats, any number of decimals.
+    near_lat: Annotated[float, Field(ge=-90, le=90)] | None = None
+    near_lon: Annotated[float, Field(ge=-180, le=180)] | None = None
+    radius_km: (
+        Annotated[float, Field(ge=0.1, le=100, description="With near_lat, near_lon.")] | None
+    ) = None
+    min_lat: Annotated[float, Field(ge=-90, le=90)] | None = None
+    min_lon: Annotated[float, Field(ge=-180, le=180)] | None = None
+    max_lat: Annotated[float, Field(ge=-90, le=90)] | None = None
+    max_lon: Annotated[float, Field(ge=-180, le=180)] | None = None
+
+    @model_validator(mode="after")
+    def _geo_filters_complete(self) -> Self:
+        near = (self.near_lat, self.near_lon, self.radius_km)
+        if any(v is not None for v in near) and None in near:
+            raise ValueError("near_lat, near_lon and radius_km go together")
+        box = (self.min_lat, self.min_lon, self.max_lat, self.max_lon)
+        if any(v is not None for v in box):
+            if None in box:
+                raise ValueError("min_lat, min_lon, max_lat and max_lon go together")
+            if self.min_lat > self.max_lat or self.min_lon > self.max_lon:  # type: ignore[operator]
+                raise ValueError("min_lat and min_lon must not be above max_lat and max_lon")
+        return self

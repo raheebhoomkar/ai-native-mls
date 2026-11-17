@@ -22,6 +22,7 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.logging import request_id_var
 from app.modules.jobs.models import Job
 
 logger = logging.getLogger(__name__)
@@ -66,9 +67,14 @@ def enqueue(
     delay: timedelta | None = None,
 ) -> Job:
     """Add a job to the caller's transaction. It becomes visible to workers on commit."""
+    payload = dict(payload or {})
+    # Carry the request's ID into the job, so a trace runs from the request to the agent call.
+    trace_id = request_id_var.get()
+    if trace_id is not None:
+        payload.setdefault("trace_id", trace_id)
     job = Job(
         kind=kind,
-        payload=payload or {},
+        payload=payload,
         organisation_id=organisation_id,
         max_attempts=max_attempts,
     )
@@ -140,6 +146,7 @@ def run_one(session: Session) -> bool:
 
     job_id = job.id
     function = _handlers.get(job.kind)
+    token = request_id_var.set(job.payload.get("trace_id"))
     try:
         if function is None:
             raise LookupError(f"No handler registered for job kind {job.kind!r}.")
@@ -158,6 +165,8 @@ def run_one(session: Session) -> bool:
             _fail(session, failed, message)
     else:
         _finish(job, "succeeded")
+    finally:
+        request_id_var.reset(token)
     session.commit()
     return True
 

@@ -12,6 +12,10 @@ import type { components } from "./api-schema";
 import { ImportSourceDetails } from "./ListingImport";
 import { ListingMedia } from "./ListingMedia";
 import { ListingCompliance } from "./ListingCompliance";
+import { ListingLocation } from "./ListingLocation";
+import { ListingValuation } from "./ListingValuation";
+import { ListingWorkflow } from "./ListingWorkflow";
+import { ListingCollaboration } from "./ListingCollaboration";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
@@ -58,8 +62,10 @@ type Loaded =
 
 export function ListingDetail({
   organisation,
+  myUserId = "",
 }: {
   organisation: CurrentOrganisation;
+  myUserId?: string;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -360,6 +366,13 @@ export function ListingDetail({
         </div>
       )}
 
+      <ListingLocation
+        key={`${property.id}:${reloads}`}
+        property={property}
+        title={listing.title}
+        isOwn={isOwn}
+        canEdit={listing.can_edit && !listing.archived_at}
+      />
       <ListingMedia
         listingId={listing.id}
         canManage={listing.can_edit}
@@ -376,6 +389,25 @@ export function ListingDetail({
           listingId={listing.id}
           listingVersion={listing.version}
           canRequest={listing.can_edit && !listing.archived_at}
+        />
+      )}
+
+      {isOwn && (
+        <ListingWorkflow
+          listingId={listing.id}
+          canRequest={listing.can_edit && !listing.archived_at}
+        />
+      )}
+
+      {isOwn && <ListingValuation listingId={listing.id} />}
+
+      {isOwn && (
+        <ListingCollaboration
+          listingId={listing.id}
+          organisationId={organisation.id}
+          myUserId={myUserId}
+          canEdit={listing.can_edit && !listing.archived_at}
+          canWrite={organisation.my_permissions.includes("listing:write")}
         />
       )}
 

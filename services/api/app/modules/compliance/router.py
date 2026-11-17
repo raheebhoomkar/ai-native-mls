@@ -25,6 +25,7 @@ from app.modules.compliance.schemas import (
 from app.modules.listings.models import Listing
 from app.modules.organisations.deps import TenantContext, require
 from app.modules.review.models import ReviewDecision
+from app.modules.workflow import service as workflow
 
 listing_scans_router = APIRouter(
     prefix="/listings/{listing_id}/compliance/scans", tags=["compliance"]
@@ -126,6 +127,7 @@ def _record(
             "decision": row.decision,
         },
     )
+    workflow.wake(session, run.listing_id)  # a paused workflow may go on now
     return _decision_out(row, {ctx.user.id: ctx.user.full_name})
 
 

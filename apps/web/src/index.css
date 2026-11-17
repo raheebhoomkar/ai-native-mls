@@ -167,6 +167,11 @@ small {
   min-width: 0;
 }
 
+/* The free-text description gets the whole first row. */
+.filters .describe {
+  grid-column: 1 / -1;
+}
+
 .filter-actions {
   display: flex;
   gap: 0.5rem;
@@ -439,4 +444,15 @@ td.import-problems {
 td.import-problems ul {
   margin: 0;
   padding-left: 1rem;
+}
+
+.map-block {
+  margin: 0.5rem 0 1rem;
+}
+
+.map {
+  height: 18rem;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }

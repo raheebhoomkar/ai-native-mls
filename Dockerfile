@@ -8,6 +8,18 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web ./
 RUN pnpm build
 
+# Wheels are built here, where a C compiler is available: some dependencies (zstandard,
+# pulled in by LangGraph) have no prebuilt wheel for this Python yet. The final image stays
+# without a compiler.
+FROM python:3.15-slim AS wheels
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /srv/services/api
+COPY services/api/pyproject.toml ./
+COPY services/api/app ./app
+RUN pip wheel --no-cache-dir --wheel-dir /wheels .
+
 FROM python:3.15-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -15,9 +27,8 @@ ENV PYTHONUNBUFFERED=1 \
     WEB_DIST_DIR=/srv/web
 # Same relative layout as the repository, which app/core/config.py relies on.
 WORKDIR /srv/services/api
-COPY services/api/pyproject.toml ./
-COPY services/api/app ./app
-RUN pip install --no-cache-dir .
+COPY --from=wheels /wheels /wheels
+RUN pip install --no-cache-dir --no-index /wheels/*.whl && rm -rf /wheels
 COPY services/api ./
 COPY --from=web /src/apps/web/dist /srv/web
 RUN useradd --system --no-create-home app \

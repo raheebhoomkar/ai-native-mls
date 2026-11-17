@@ -37,6 +37,12 @@ Photo redaction adds no permission either. Whoever may manage a listing's photos
 
 Policy checks (compliance flags) add no permission either. Whoever may edit a listing may request a check of its title and remarks (`POST /listings/{id}/compliance/scans`); submitting for review also starts one. Readers in the organisation that owns the listing may list its checks; another organisation gets 404, even for a shared listing. Holders of `listing:publish` decide findings (accept, dismiss, request edits) and rule on appeals, except on listings where they are the listing agent; an appeal ruling must come from someone other than the first reviewer. Only the listing agent may appeal, once per finding. Every request and decision is audited with the policy version. No decision changes, hides or rejects the listing. See `docs/modules/s11-compliance.md`.
 
+Property locations add no permission. A point is part of the property, so whoever may read a listing sees its point, including on listings shared by another organisation. Holders of `listing:write` in the organisation that owns the property may set a point by hand (`PUT /properties/{id}/location`); another organisation gets 404. Neighbourhood facts (`GET /properties/{id}/enrichment`) are for readers in the owning organisation only. Geocoding runs as a background job with no user; it and every manual point are audited. See `docs/modules/s12-geospatial.md`.
+
+Semantic search adds no permission. `GET /listings/search` needs `listing:read` and returns only listings the caller could already list: the normal filters and the sharing rule pick the candidates in SQL, and the vector store only ranks them (the Qdrant query filters by organisation and sharing again). Indexing runs as a background job with no user. See `docs/modules/s13-semantic-search.md`.
+
+Valuation adds no permission. Readers (`listing:read`) in the organisation that owns a listing may request and list its valuations (`/listings/{id}/valuations`) and see the organisation's accuracy (`GET /valuations/evaluation`); another organisation gets 404, even for a shared listing. Comparable sales are only listings the requester may already see. Requests are audited. See `docs/modules/s14-valuation.md`.
+
 ## Role assignment rules
 
 - An MLS organisation may hold: MLS administrator, broker, agent, API consumer.
@@ -56,7 +62,7 @@ Policy checks (compliance flags) add no permission either. Whoever may edit a li
 
 ## Audited actions
 
-`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`, `media.uploaded`, `media.deleted`, `ai.extraction_requested`, `ai.suggestion_decided`, `ai.redaction_requested`, `ai.redaction_decided`.
+`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`, `media.uploaded`, `media.deleted`, `ai.extraction_requested`, `ai.suggestion_decided`, `ai.redaction_requested`, `ai.redaction_decided`, `valuation.requested`.
 
 Audit events record actor, organisation, target, IP address, request ID and time. They never contain passwords, session tokens or link tokens.
 

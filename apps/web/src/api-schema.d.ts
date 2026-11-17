@@ -375,6 +375,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/properties/{property_id}/location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Property Location
+         * @description Set the point by hand. It replaces any geocoded point and is kept on address changes.
+         */
+        put: operations["set_property_location_api_v1_properties__property_id__location_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/properties/{property_id}/enrichment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Property Enrichment
+         * @description Neighbourhood facts, each with its source and date, or "not available" with a reason.
+         */
+        get: operations["get_property_enrichment_api_v1_properties__property_id__enrichment_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings": {
         parameters: {
             query?: never;
@@ -395,6 +435,27 @@ export interface paths {
          * @description Create a draft listing for one of your organisation's properties.
          */
         post: operations["create_listing_api_v1_listings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Listings
+         * @description Listings ranked by how well they match a description. The usual filters and visibility
+         *     rules apply first; ranking only orders what you may already see.
+         */
+        get: operations["search_listings_api_v1_listings_search_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -852,10 +913,552 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/valuations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Valuations
+         * @description The 20 newest valuations of a listing, newest first.
+         */
+        get: operations["list_valuations_api_v1_listings__listing_id__valuations_get"];
+        put?: never;
+        /**
+         * Request Valuation
+         * @description Estimate a range from comparable reported sales. Not an appraisal. Only the
+         *     organisation that owns the listing may ask; another organisation gets 404.
+         */
+        post: operations["request_valuation_api_v1_listings__listing_id__valuations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/valuations/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluation
+         * @description How earlier estimates compare with the prices listings later sold for, per model version.
+         */
+        get: operations["evaluation_api_v1_valuations_evaluation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/{listing_id}/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Workflows
+         * @description The 20 newest runs on a listing, newest first. Owning organisation only.
+         */
+        get: operations["list_workflows_api_v1_listings__listing_id__workflows_get"];
+        put?: never;
+        /**
+         * Start Workflow
+         * @description Run the listing workflow: locate, extract from photos, policy check, index, value.
+         *     Editors of the owning organisation only; one run at a time per listing (409).
+         */
+        post: operations["start_workflow_api_v1_listings__listing_id__workflows_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Org Workflows
+         * @description The monitor: the organisation's 50 newest runs, newest first.
+         */
+        get: operations["list_org_workflows_api_v1_workflows_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Workflow
+         * @description Stop a run that has not finished. Editors of the listing only.
+         */
+        post: operations["cancel_workflow_api_v1_workflows__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{run_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Workflow
+         * @description Run a failed or cancelled run again; finished steps are kept. Editors only.
+         */
+        post: operations["retry_workflow_api_v1_workflows__run_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workflow */
+        get: operations["get_workflow_api_v1_workflows__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description The organisation's 100 newest background jobs. Platform jobs are not shown.
+         */
+        get: operations["list_jobs_api_v1_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Job
+         * @description Queue a failed job again with a fresh set of attempts.
+         */
+        post: operations["retry_job_api_v1_jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Api Keys
+         * @description The organisation's keys, newest first, without their secrets.
+         */
+        get: operations["list_api_keys_api_v1_api_keys_get"];
+        put?: never;
+        /**
+         * Create Api Key
+         * @description Create a key that acts as you, limited to its scopes. Administrators only; not with
+         *     an API key. The full key is in this answer only.
+         */
+        post: operations["create_api_key_api_v1_api_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/api-keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Api Key
+         * @description Revoke a key at once. It cannot be used again.
+         */
+        delete: operations["revoke_api_key_api_v1_api_keys__key_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Event Kinds
+         * @description The events a webhook can subscribe to.
+         */
+        get: operations["event_kinds_api_v1_webhooks_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Webhooks */
+        get: operations["list_webhooks_api_v1_webhooks_get"];
+        put?: never;
+        /**
+         * Create Webhook
+         * @description Subscribe an endpoint to events. Administrators only. The signing secret is in this
+         *     answer only.
+         */
+        post: operations["create_webhook_api_v1_webhooks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disable Webhook
+         * @description Turn a webhook off. Pending deliveries stop; the delivery log is kept.
+         */
+        delete: operations["disable_webhook_api_v1_webhooks__subscription_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/{subscription_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Webhook
+         * @description Send a signed `ping` event to the endpoint.
+         */
+        post: operations["test_webhook_api_v1_webhooks__subscription_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/{subscription_id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Deliveries
+         * @description The 50 newest deliveries, newest first.
+         */
+        get: operations["list_deliveries_api_v1_webhooks__subscription_id__deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/deliveries/{delivery_id}/redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeliver
+         * @description Send a finished delivery again with the same body and a fresh set of attempts.
+         */
+        post: operations["redeliver_api_v1_webhooks_deliveries__delivery_id__redeliver_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/{listing_id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Assignment */
+        get: operations["get_assignment_api_v1_listings__listing_id__assignment_get"];
+        /**
+         * Put Assignment
+         * @description Assign the listing to a teammate (they are notified), or clear it. Editors only.
+         */
+        put: operations["put_assignment_api_v1_listings__listing_id__assignment_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/{listing_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Comments
+         * @description Team comments and your own private notes, oldest first. Owning organisation only.
+         */
+        get: operations["list_comments_api_v1_listings__listing_id__comments_get"];
+        put?: never;
+        /**
+         * Add Comment
+         * @description Comment for the team (the listing agent, the assignee and earlier commenters are
+         *     notified) or write a private note only you see.
+         */
+        post: operations["add_comment_api_v1_listings__listing_id__comments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/listings/{listing_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listing Activity
+         * @description What happened to the listing, newest first: changes, checks, runs and comments.
+         */
+        get: operations["listing_activity_api_v1_listings__listing_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comments/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Comment
+         * @description Authors only. The timeline keeps a "deleted a comment" entry without the text.
+         */
+        delete: operations["delete_comment_api_v1_comments__comment_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit Comment
+         * @description Authors only.
+         */
+        patch: operations["edit_comment_api_v1_comments__comment_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notifications
+         * @description Your 50 newest notifications in this organisation, and how many are unread.
+         */
+        get: operations["list_notifications_api_v1_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Notification */
+        post: operations["read_notification_api_v1_notifications__notification_id__read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read All */
+        post: operations["read_all_api_v1_notifications_read_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Preferences
+         * @description Each notification kind and whether you get it.
+         */
+        get: operations["get_preferences_api_v1_notifications_preferences_get"];
+        /**
+         * Put Preferences
+         * @description Turn kinds on or off, for example `{"comment": false}`.
+         */
+        put: operations["put_preferences_api_v1_notifications_preferences_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivityOut */
+        ActivityOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Kind */
+            kind: string;
+            /** Action */
+            action: string;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Summary */
+            summary: string;
+            /** Comment Id */
+            comment_id: string | null;
+            /** Visibility */
+            visibility: string | null;
+        };
         /** Address */
         Address: {
             /** Line1 */
@@ -938,6 +1541,50 @@ export interface components {
             /** Can Review */
             can_review: boolean;
         };
+        /** ApiKeyIn */
+        ApiKeyIn: {
+            /** Name */
+            name: string;
+            /** Scopes */
+            scopes: string[];
+            /**
+             * Rate Limit Per Minute
+             * @default 60
+             */
+            rate_limit_per_minute: number;
+        };
+        /** ApiKeyOut */
+        ApiKeyOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Prefix */
+            prefix: string;
+            /** Scopes */
+            scopes: string[];
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute: number;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Requests Last Minute */
+            requests_last_minute: number;
+        };
         /**
          * AppealDecisionIn
          * @description upheld: the first decision stands. overturned: the finding is set aside.
@@ -976,6 +1623,60 @@ export interface components {
              */
             unit: "sqft" | "sqm";
         };
+        /**
+         * AskingSummary
+         * @description Active listings matching the same rules. Asking prices, not sale prices; never in the
+         *     estimate.
+         */
+        AskingSummary: {
+            /** Count */
+            count: number;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "price_per_sqft" | "price";
+            /** Low */
+            low: string;
+            /** Median */
+            median: string;
+            /** High */
+            high: string;
+            /** Currency */
+            currency: string;
+        };
+        /** AssignmentIn */
+        AssignmentIn: {
+            /**
+             * User Id
+             * @description Null clears the assignment.
+             */
+            user_id: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** AssignmentOut */
+        AssignmentOut: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** User Name */
+            user_name: string;
+            /**
+             * Assigned By User Id
+             * Format: uuid
+             */
+            assigned_by_user_id: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Assigned At
+             * Format: date-time
+             */
+            assigned_at: string;
+        };
         /** AuditEventOut */
         AuditEventOut: {
             /**
@@ -1011,6 +1712,93 @@ export interface components {
             header: string;
             /** Field */
             field: string | null;
+        };
+        /** CommentEditIn */
+        CommentEditIn: {
+            /** Body */
+            body: string;
+        };
+        /** CommentIn */
+        CommentIn: {
+            /** Body */
+            body: string;
+            /**
+             * Visibility
+             * @default team
+             * @enum {string}
+             */
+            visibility: "team" | "private";
+        };
+        /** CommentOut */
+        CommentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /**
+             * Author User Id
+             * Format: uuid
+             */
+            author_user_id: string;
+            /** Author Name */
+            author_name: string;
+            /** Visibility */
+            visibility: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Edited At */
+            edited_at: string | null;
+            /** Deleted At */
+            deleted_at: string | null;
+        };
+        /** Comp */
+        Comp: {
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Title */
+            title: string;
+            /** Organisation Name */
+            organisation_name: string;
+            closed_price: components["schemas"]["Money-Output"];
+            /**
+             * Closed On
+             * Format: date
+             */
+            closed_on: string;
+            /** Listed On */
+            listed_on: string | null;
+            /** Days On Market */
+            days_on_market: number | null;
+            /**
+             * Distance Km
+             * @description Null when either point is unknown.
+             */
+            distance_km: number | null;
+            /** Area Sqft */
+            area_sqft: number | null;
+            /** Price Per Sqft */
+            price_per_sqft: string | null;
+            /** Bedrooms */
+            bedrooms: number | null;
+            /**
+             * Price Source
+             * @default Reported by the listing agent when marking the listing sold; not verified.
+             */
+            price_source: string;
         };
         /** ComplianceDecisionOut */
         ComplianceDecisionOut: {
@@ -1183,6 +1971,74 @@ export interface components {
             /** Can Appeal */
             can_appeal: boolean;
         };
+        /** CreatedApiKeyOut */
+        CreatedApiKeyOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Prefix */
+            prefix: string;
+            /** Scopes */
+            scopes: string[];
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute: number;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Requests Last Minute */
+            requests_last_minute: number;
+            /**
+             * Key
+             * @description The full key. Shown once; store it now.
+             */
+            key: string;
+        };
+        /** CreatedWebhookOut */
+        CreatedWebhookOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Url */
+            url: string;
+            /** Description */
+            description: string;
+            /** Event Kinds */
+            event_kinds: string[];
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Disabled At */
+            disabled_at: string | null;
+            /**
+             * Secret
+             * @description Signing secret. Shown once; store it now.
+             */
+            secret: string;
+        };
         /**
          * CurrentOrganisationOut
          * @description The active organisation plus what the caller may do in it (for building navigation).
@@ -1250,6 +2106,42 @@ export interface components {
              */
             decided_at: string;
         };
+        /** DeliveryOut */
+        DeliveryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Event Id */
+            event_id: string | null;
+            /** Event Kind */
+            event_kind: string;
+            /** Status */
+            status: string;
+            /** Attempts */
+            attempts: number;
+            /** Last Status Code */
+            last_status_code: number | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Response */
+            last_response: string | null;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Delivered At */
+            delivered_at: string | null;
+        };
         /** DetectorUsed */
         DetectorUsed: {
             /** Detector */
@@ -1258,6 +2150,24 @@ export interface components {
             version: string;
             /** Categories */
             categories: string[];
+        };
+        /** EnrichmentItemOut */
+        EnrichmentItemOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string | null;
+            /** Source */
+            source: string | null;
+            /** Retrieved At */
+            retrieved_at: string | null;
+            /**
+             * Reason
+             * @description Why there is no value. Set exactly when value is null.
+             */
+            reason: string | null;
         };
         /** ErrorBody */
         ErrorBody: {
@@ -1283,6 +2193,59 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** Estimate */
+        Estimate: {
+            low: components["schemas"]["Money-Output"];
+            median: components["schemas"]["Money-Output"];
+            high: components["schemas"]["Money-Output"];
+            /**
+             * Method
+             * @description price_per_sqft: comps' price per sqft times the subject's area. closed_price: comps' prices, used when the subject has no area.
+             * @enum {string}
+             */
+            method: "price_per_sqft" | "closed_price";
+            /** Subject Area Sqft */
+            subject_area_sqft: number | null;
+        };
+        /** EvaluationOut */
+        EvaluationOut: {
+            /** Model Version */
+            model_version: string;
+            /**
+             * Count
+             * @description Valuations of listings that later sold.
+             */
+            count: number;
+            /** Median Abs Error Pct */
+            median_abs_error_pct: number | null;
+            /** Within Range Share */
+            within_range_share: number | null;
+        };
+        /** Explanation */
+        Explanation: {
+            /**
+             * Matched Words
+             * @description Words of the query found in the listing.
+             */
+            matched_words: string[];
+            /**
+             * Filters
+             * @description Filters that narrowed the candidates.
+             */
+            filters: string[];
+            /**
+             * Source
+             * @description Embedder: demo or gemini.
+             */
+            source: string;
+            /** Model */
+            model: string;
+            /**
+             * Note
+             * @description Set when results need a caveat, e.g. the demo embedder.
+             */
+            note: string | null;
         };
         /**
          * Extraction
@@ -1542,6 +2505,38 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** JobOut */
+        JobOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Status */
+            status: string;
+            /** Attempts */
+            attempts: number;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Last Error */
+            last_error: string | null;
+            /** Trace Id */
+            trace_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Run After
+             * Format: date-time
+             */
+            run_after: string;
+            /** Finished At */
+            finished_at: string | null;
+        };
         /** ListingCreate */
         ListingCreate: {
             /**
@@ -1646,6 +2641,11 @@ export interface components {
             allowed_transitions: ("draft" | "pending_review" | "active" | "temporarily_off_market" | "sold" | "withdrawn" | "expired")[];
             /** Can Edit */
             can_edit: boolean;
+            /**
+             * Distance Km
+             * @description From near_lat, near_lon, in km to 2 decimals; only then.
+             */
+            distance_km?: number | null;
             /** Version */
             version: number;
             /**
@@ -1684,6 +2684,44 @@ export interface components {
             expires_on?: string | null;
             /** Listing Agent User Id */
             listing_agent_user_id?: string | null;
+        };
+        /** Location */
+        Location: {
+            /** Latitude */
+            latitude: string;
+            /** Longitude */
+            longitude: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "demo" | "nominatim" | "manual";
+            /**
+             * Precision
+             * @description How close the point is to the property: the building, the area or the city.
+             * @enum {string}
+             */
+            precision: "address" | "locality" | "city";
+            /**
+             * Located At
+             * Format: date-time
+             */
+            located_at: string;
+            /**
+             * Attribution
+             * @description Credit the data source requires, if any.
+             */
+            attribution: string | null;
+        };
+        /**
+         * LocationIn
+         * @description A point set by hand. Kept when the address changes; set it again to correct it.
+         */
+        LocationIn: {
+            /** Latitude */
+            latitude: number | string;
+            /** Longitude */
+            longitude: number | string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1796,6 +2834,36 @@ export interface components {
              */
             currency: string;
         };
+        /** NotificationOut */
+        NotificationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Listing Id */
+            listing_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Read At */
+            read_at: string | null;
+        };
+        /** NotificationsOut */
+        NotificationsOut: {
+            /** Items */
+            items: components["schemas"]["NotificationOut"][];
+            /** Unread */
+            unread: number;
+        };
         /** OrganisationCreate */
         OrganisationCreate: {
             /** Name */
@@ -1825,6 +2893,22 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** Outcome */
+        Outcome: {
+            price: components["schemas"]["Money-Output"];
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Error Pct
+             * @description (estimate median - sold price) / sold price.
+             */
+            error_pct: number | null;
+            /** Within Range */
+            within_range: boolean | null;
         };
         /** Page[AuditEventOut] */
         Page_AuditEventOut_: {
@@ -1874,6 +2958,40 @@ export interface components {
             items: components["schemas"]["StatusChangeOut"][];
             /** Next Cursor */
             next_cursor: string | null;
+        };
+        /** Parameters */
+        Parameters: {
+            /** Seed */
+            seed: number;
+            /**
+             * Radius Km
+             * @default 5
+             */
+            radius_km: number;
+            /**
+             * Months
+             * @description Sales closed in this window.
+             * @default 24
+             */
+            months: number;
+            /**
+             * Area Tolerance
+             * @default 0.3
+             */
+            area_tolerance: number;
+            /**
+             * Bedrooms Tolerance
+             * @default 1
+             */
+            bedrooms_tolerance: number;
+            /** Min Comps */
+            min_comps: number;
+            /** Max Comps */
+            max_comps: number;
+            /** Min Simulation Samples */
+            min_simulation_samples: number;
+            /** Simulation Runs */
+            simulation_runs: number;
         };
         /** PasswordChange */
         PasswordChange: {
@@ -1982,6 +3100,14 @@ export interface components {
              * Format: uuid
              */
             organisation_id: string;
+            location: components["schemas"]["Location"] | null;
+            /**
+             * Location Status
+             * @description None for properties created before locations existed.
+             */
+            location_status: ("pending" | "located" | "not_found" | "failed") | null;
+            /** Location Error */
+            location_error: string | null;
             /** Version */
             version: number;
             /**
@@ -2176,6 +3302,55 @@ export interface components {
             /** Errors */
             errors: components["schemas"]["ProblemOut"][];
         };
+        /** SearchHit */
+        SearchHit: {
+            listing: components["schemas"]["ListingOut"];
+            /**
+             * Score
+             * @description Cosine similarity of the query and the listing, -1 to 1.
+             */
+            score: number;
+            explanation: components["schemas"]["Explanation"];
+        };
+        /** SearchResults */
+        SearchResults: {
+            /** Items */
+            items: components["schemas"]["SearchHit"][];
+            /**
+             * Next Cursor
+             * @description Always null: one ranked page.
+             */
+            next_cursor?: null;
+        };
+        /** Simulation */
+        Simulation: {
+            /** Available */
+            available: boolean;
+            /** Reason */
+            reason?: string | null;
+            /** Runs */
+            runs: number;
+            /** Seed */
+            seed: number;
+            /**
+             * Samples
+             * @description Comps with both a listed and a closed date.
+             */
+            samples: number;
+            /** Days P10 */
+            days_p10?: number | null;
+            /** Days P50 */
+            days_p50?: number | null;
+            /** Days P90 */
+            days_p90?: number | null;
+            /**
+             * Sold Within
+             * @description Share of simulated runs sold within 30, 60, 90 days.
+             */
+            sold_within?: {
+                [key: string]: number;
+            };
+        };
         /** StatusChangeOut */
         StatusChangeOut: {
             /**
@@ -2202,6 +3377,25 @@ export interface components {
              * Format: date-time
              */
             changed_at: string;
+        };
+        /** StepOut */
+        StepOut: {
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Attempts */
+            attempts: number;
+            /** Output */
+            output: {
+                [key: string]: unknown;
+            };
+            /** Error */
+            error: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
         };
         /** TransitionRequest */
         TransitionRequest: {
@@ -2255,6 +3449,203 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** ValuationOut */
+        ValuationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "insufficient_data";
+            /** Model Version */
+            model_version: string;
+            /** Simulation Version */
+            simulation_version: string;
+            parameters: components["schemas"]["Parameters"];
+            result: components["schemas"]["ValuationResult"];
+            outcome: components["schemas"]["Outcome"] | null;
+            /**
+             * Requested By User Id
+             * Format: uuid
+             */
+            requested_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Disclaimer
+             * @default Not an appraisal and not a guaranteed sale price. Decision support from sales reported by listing agents, which are not verified.
+             */
+            disclaimer: string;
+        };
+        /**
+         * ValuationRequest
+         * @description Every assumption; all are stored with the result.
+         */
+        ValuationRequest: {
+            /**
+             * Seed
+             * @description Simulation seed. Same seed and comps give the same answer.
+             */
+            seed?: number | null;
+            /**
+             * Radius Km
+             * @default 5
+             */
+            radius_km: number;
+            /**
+             * Months
+             * @description Sales closed in this window.
+             * @default 24
+             */
+            months: number;
+            /**
+             * Area Tolerance
+             * @default 0.3
+             */
+            area_tolerance: number;
+            /**
+             * Bedrooms Tolerance
+             * @default 1
+             */
+            bedrooms_tolerance: number;
+        };
+        /** ValuationResult */
+        ValuationResult: {
+            /**
+             * Currency
+             * @description The listing's currency; every amount here is in it.
+             */
+            currency: string;
+            /**
+             * Reason
+             * @description Why there is no estimate. Set exactly when it is null.
+             */
+            reason: string | null;
+            estimate: components["schemas"]["Estimate"] | null;
+            /** Sample Size */
+            sample_size: number;
+            /**
+             * Data From
+             * @description Oldest comp's closing date.
+             */
+            data_from: string | null;
+            /**
+             * Data To
+             * @description Newest comp's closing date.
+             */
+            data_to: string | null;
+            /** Comps */
+            comps: components["schemas"]["Comp"][];
+            asking: components["schemas"]["AskingSummary"] | null;
+            simulation: components["schemas"]["Simulation"];
+            /**
+             * Offers Reason
+             * @description Why offer outcomes are not simulated.
+             */
+            offers_reason: string;
+            /** Assumptions */
+            assumptions: string[];
+        };
+        /** WebhookIn */
+        WebhookIn: {
+            /** Url */
+            url: string;
+            /** Event Kinds */
+            event_kinds: string[];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
+        /** WebhookOut */
+        WebhookOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Url */
+            url: string;
+            /** Description */
+            description: string;
+            /** Event Kinds */
+            event_kinds: string[];
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Disabled At */
+            disabled_at: string | null;
+        };
+        /** WorkflowRunOut */
+        WorkflowRunOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            /** Listing Title */
+            listing_title: string;
+            /** Workflow */
+            workflow: string;
+            /** Workflow Version */
+            workflow_version: string;
+            /** Status */
+            status: string;
+            /** Trace Id */
+            trace_id: string | null;
+            /** Passes */
+            passes: number;
+            /** Max Passes */
+            max_passes: number;
+            /**
+             * Deadline
+             * Format: date-time
+             */
+            deadline: string;
+            /** Error */
+            error: string | null;
+            /**
+             * Requested By User Id
+             * Format: uuid
+             */
+            requested_by_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Steps */
+            steps: components["schemas"]["StepOut"][];
         };
     };
     responses: never;
@@ -2672,6 +4063,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -2725,6 +4118,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -2775,6 +4170,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 user_id: string;
@@ -2825,6 +4222,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 user_id: string;
@@ -2882,6 +4281,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -2932,6 +4333,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -2986,6 +4389,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 invitation_id: string;
@@ -3123,6 +4528,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3179,6 +4586,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3247,6 +4656,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3319,6 +4730,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -3389,6 +4802,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -3463,6 +4878,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 property_id: string;
@@ -3477,6 +4894,154 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_property_location_api_v1_properties__property_id__location_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                property_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_property_enrichment_api_v1_properties__property_id__enrichment_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                property_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrichmentItemOut"][];
+                };
             };
             /** @description Unauthorized */
             401: {
@@ -3542,12 +5107,21 @@ export interface operations {
                 q?: string | null;
                 include_archived?: boolean;
                 sort?: "newest" | "oldest" | "price_asc" | "price_desc";
+                near_lat?: number | null;
+                near_lon?: number | null;
+                radius_km?: number | null;
+                min_lat?: number | null;
+                min_lon?: number | null;
+                max_lat?: number | null;
+                max_lon?: number | null;
                 limit?: number;
                 cursor?: string | null;
             };
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3616,6 +5190,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3682,12 +5258,117 @@ export interface operations {
             };
         };
     };
+    search_listings_api_v1_listings_search_get: {
+        parameters: {
+            query: {
+                /** @description organisation: your organisation's listings. network: listings other organisations share. all: both. */
+                scope?: "all" | "organisation" | "network";
+                status?: ("draft" | "pending_review" | "active" | "temporarily_off_market" | "sold" | "withdrawn" | "expired")[];
+                listing_type?: ("sale" | "rent") | null;
+                property_type?: ("apartment" | "house" | "villa" | "plot" | "commercial" | "other") | null;
+                city?: string | null;
+                locality?: string | null;
+                min_price?: number | string | null;
+                max_price?: number | string | null;
+                min_bedrooms?: number | null;
+                listing_agent_user_id?: string | null;
+                /** @description Describe the home in your own words. */
+                q: string;
+                include_archived?: boolean;
+                sort?: "newest" | "oldest" | "price_asc" | "price_desc";
+                near_lat?: number | null;
+                near_lon?: number | null;
+                radius_km?: number | null;
+                min_lat?: number | null;
+                min_lon?: number | null;
+                max_lat?: number | null;
+                max_lon?: number | null;
+                limit?: number;
+            };
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_listing_api_v1_listings__listing_id__get: {
         parameters: {
             query?: never;
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -3758,6 +5439,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -3826,6 +5509,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -3900,6 +5585,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -3977,6 +5664,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4047,6 +5736,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4117,6 +5808,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4208,6 +5901,8 @@ export interface operations {
                 "content-type"?: string;
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
                 "content-length"?: number | null;
             };
             path: {
@@ -4304,6 +5999,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4390,6 +6087,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4530,6 +6229,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4600,6 +6301,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4670,6 +6373,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -4744,6 +6449,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4814,6 +6521,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -4884,6 +6593,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -4958,6 +6669,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -5026,6 +6739,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -5098,6 +6813,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -5170,6 +6887,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5240,6 +6959,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5310,6 +7031,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 listing_id: string;
@@ -5380,6 +7103,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -5455,6 +7180,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -5530,6 +7257,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path: {
                 run_id: string;
@@ -5605,6 +7334,8 @@ export interface operations {
             header?: {
                 /** @description Organisation to act in. Optional when you belong to exactly one. */
                 "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -5649,6 +7380,2177 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_valuations_api_v1_listings__listing_id__valuations_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    request_valuation_api_v1_listings__listing_id__valuations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValuationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuationOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    evaluation_api_v1_valuations_evaluation_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_workflows_api_v1_listings__listing_id__workflows_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    start_workflow_api_v1_listings__listing_id__workflows_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_org_workflows_api_v1_workflows_get: {
+        parameters: {
+            query?: {
+                /** @description A run status, or `active` for every run that has not finished. */
+                status?: string | null;
+            };
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_workflow_api_v1_workflows__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_workflow_api_v1_workflows__run_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_workflow_api_v1_workflows__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowRunOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_jobs_api_v1_jobs_get: {
+        parameters: {
+            query?: {
+                status?: ("queued" | "running" | "succeeded" | "failed") | null;
+            };
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_job_api_v1_jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_api_keys_api_v1_api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_api_key_api_v1_api_keys_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedApiKeyOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_api_key_api_v1_api_keys__key_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    event_kinds_api_v1_webhooks_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    list_webhooks_api_v1_webhooks_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_webhook_api_v1_webhooks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedWebhookOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    disable_webhook_api_v1_webhooks__subscription_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    test_webhook_api_v1_webhooks__subscription_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_deliveries_api_v1_webhooks__subscription_id__deliveries_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    redeliver_api_v1_webhooks_deliveries__delivery_id__redeliver_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_assignment_api_v1_listings__listing_id__assignment_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentOut"] | null;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_assignment_api_v1_listings__listing_id__assignment_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentOut"] | null;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_comments_api_v1_listings__listing_id__comments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_comment_api_v1_listings__listing_id__comments_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listing_activity_api_v1_listings__listing_id__activity_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_comment_api_v1_comments__comment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    edit_comment_api_v1_comments__comment_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentEditIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_notifications_api_v1_notifications_get: {
+        parameters: {
+            query?: {
+                unread?: boolean;
+            };
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationsOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_notification_api_v1_notifications__notification_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_all_api_v1_notifications_read_all_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_preferences_api_v1_notifications_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    put_preferences_api_v1_notifications_preferences_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Organisation to act in. Optional when you belong to exactly one. */
+                "x-organisation-id"?: string | null;
+                /** @description `Bearer <API key>` for third-party clients; the browser uses a cookie. */
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

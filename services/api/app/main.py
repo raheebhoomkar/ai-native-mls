@@ -11,17 +11,25 @@ from app.modules.ai.redaction_router import (
 )
 from app.modules.ai.router import router as ai_router
 from app.modules.ai.router import runs_router as ai_runs_router
+from app.modules.apikeys import middleware as apikeys_middleware
+from app.modules.apikeys.router import router as apikeys_router
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
+from app.modules.collaboration.router import comments_router, notifications_router
+from app.modules.collaboration.router import listing_router as collaboration_router
 from app.modules.compliance.router import compliance_router, listing_scans_router
 from app.modules.health.router import router as health_router
 from app.modules.imports.router import imports_router, listing_import_router
-from app.modules.jobs import models as _jobs_models  # noqa: F401  # no routes; registers the table
+from app.modules.jobs.router import router as jobs_router
 from app.modules.listings.router import listings_router, properties_router
 from app.modules.media.router import listing_media_router, media_router
 from app.modules.organisations.router import public_router as invitations_router
 from app.modules.organisations.router import router as organisations_router
+from app.modules.outbox import models as _outbox_models  # noqa: F401  # no routes; registers the table
 from app.modules.review import models as _review_models  # noqa: F401  # no routes; registers tables
+from app.modules.valuation.router import listing_valuations_router, valuations_router
+from app.modules.webhooks.router import router as webhooks_router
+from app.modules.workflow.router import listing_workflows_router, workflows_router
 
 API_PREFIX = "/api/v1"
 
@@ -38,6 +46,8 @@ def create_app() -> FastAPI:
         redoc_url=None,
         openapi_url=f"{API_PREFIX}/openapi.json" if docs_enabled else None,
     )
+    # Added before the error handling, so it runs inside it and sees the request ID.
+    apikeys_middleware.install(app)
     install_error_handling(app)
 
     # Each module registers its router here. A module reads another module's data only
@@ -61,6 +71,16 @@ def create_app() -> FastAPI:
     v1.include_router(listing_import_router)
     v1.include_router(listing_scans_router)
     v1.include_router(compliance_router)
+    v1.include_router(listing_valuations_router)
+    v1.include_router(valuations_router)
+    v1.include_router(listing_workflows_router)
+    v1.include_router(workflows_router)
+    v1.include_router(jobs_router)
+    v1.include_router(apikeys_router)
+    v1.include_router(webhooks_router)
+    v1.include_router(collaboration_router)
+    v1.include_router(comments_router)
+    v1.include_router(notifications_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

@@ -98,13 +98,13 @@ class GeminiClient:
                 "thinkingConfig": {"thinkingLevel": "low"},
             },
         }
+        return self._post(API_URL.format(model=self._model), request)
+
+    def _post(self, url: str, request: dict[str, Any]) -> bytes:
         headers = {"Content-Type": "application/json", "x-goog-api-key": self._api_key}
         try:
             status, response_headers, body = self._transport(
-                API_URL.format(model=self._model),
-                headers,
-                json.dumps(request).encode(),
-                self._timeout,
+                url, headers, json.dumps(request).encode(), self._timeout
             )
         except TimeoutError as error:
             raise ProviderTimeout(f"Gemini did not answer within {self._timeout:g} s.") from error

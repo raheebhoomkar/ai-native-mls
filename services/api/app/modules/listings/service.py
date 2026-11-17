@@ -1,14 +1,16 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, and_, exists, or_, select
+from sqlalchemy import ColumnElement, Select, and_, exists, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.errors import AppError, ErrorDetail
 from app.core.pagination import PageParams, paginate
+from app.modules.geo.distance import within_km
+from app.modules.geo.service import request_geocode
 from app.modules.listings.models import Listing, ListingFeature, ListingStatusHistory, Property
 from app.modules.listings.schemas import (
     ListingCreate,
@@ -20,6 +22,7 @@ from app.modules.listings.schemas import (
 )
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext
+from app.modules.outbox import service as outbox
 
 # --- Policy -------------------------------------------------------------------------------
 
@@ -88,6 +91,17 @@ def _conflict() -> AppError:
     )
 
 
+def _changed(session: Session, listing: Listing) -> None:
+    """Tell consumers (search index, later webhooks) in the same transaction."""
+    outbox.emit(
+        session,
+        "listing.changed",
+        organisation_id=listing.organisation_id,
+        subject_type="listing",
+        subject_id=listing.id,
+    )
+
+
 def _flush(session: Session) -> None:
     try:
         session.flush()
@@ -97,6 +111,9 @@ def _flush(session: Session) -> None:
 
 
 # --- Properties ---------------------------------------------------------------------------
+
+
+_ADDRESS_COLUMNS = ("address_line1", "locality", "city", "state", "postal_code", "country")
 
 
 def _property_columns(data: PropertyCreate) -> dict[str, Any]:
@@ -122,6 +139,7 @@ def create_property(session: Session, ctx: TenantContext, data: PropertyCreate) 
     prop = Property(organisation_id=ctx.organisation_id, **_property_columns(data))
     session.add(prop)
     session.flush()
+    request_geocode(session, prop)
     session.refresh(prop)  # read back database-normalised values, e.g. 1250 -> 1250.00
     return prop
 
@@ -167,9 +185,19 @@ def update_property(
 ) -> Property:
     prop = get_property(session, ctx, property_id)
     _check_version(prop.version, data.version)
+    old_address = [getattr(prop, column) for column in _ADDRESS_COLUMNS]
     for column, value in _property_columns(data).items():
         setattr(prop, column, value)
     _flush(session)
+    if [getattr(prop, column) for column in _ADDRESS_COLUMNS] != old_address:
+        request_geocode(session, prop)
+    outbox.emit(
+        session,
+        "property.changed",
+        organisation_id=prop.organisation_id,
+        subject_type="property",
+        subject_id=prop.id,
+    )
     return prop
 
 
@@ -248,6 +276,7 @@ def create_listing(session: Session, ctx: TenantContext, data: ListingCreate) ->
     session.add(listing)
     session.flush()
     _record_status(session, ctx, listing, None, None)
+    _changed(session, listing)
     session.flush()
     session.refresh(listing)  # read back database-normalised values, e.g. 100 -> 100.00
     return listing
@@ -270,9 +299,8 @@ def _get_editable(session: Session, ctx: TenantContext, listing_id: UUID, versio
     return listing
 
 
-def list_listings(
-    session: Session, ctx: TenantContext, filters: ListingFilters, page: PageParams
-) -> tuple[Sequence[Listing], str | None]:
+def filtered_listings(ctx: TenantContext, filters: ListingFilters) -> Select[Listing]:
+    """Listings the caller may read that match the filters. Sort fields are not applied."""
     stmt = select(Listing).join(Property, Property.id == Listing.property_id).where(_visible(ctx))
     if filters.scope == "organisation":
         stmt = stmt.where(Listing.organisation_id == ctx.organisation_id)
@@ -306,6 +334,28 @@ def list_listings(
                 Property.city.icontains(filters.q, autoescape=True),
             )
         )
+    if filters.near_lat is not None and filters.near_lon is not None and filters.radius_km:
+        stmt = stmt.where(
+            within_km(
+                Property.latitude,
+                Property.longitude,
+                filters.near_lat,
+                filters.near_lon,
+                filters.radius_km,
+            )
+        )
+    if filters.min_lat is not None and filters.max_lat is not None:
+        stmt = stmt.where(
+            Property.latitude.between(filters.min_lat, filters.max_lat),
+            Property.longitude.between(filters.min_lon, filters.max_lon),
+        )
+    return stmt
+
+
+def list_listings(
+    session: Session, ctx: TenantContext, filters: ListingFilters, page: PageParams
+) -> tuple[Sequence[Listing], str | None]:
+    stmt = filtered_listings(ctx, filters)
     by_price = filters.sort.startswith("price")
     return paginate(
         session,
@@ -344,7 +394,15 @@ def update_listing(
             changes[column] = [old, value]
             setattr(listing, column, value)
     _flush(session)
+    if changes:
+        _changed(session, listing)
     return listing, changes
+
+
+# Checks that must pass before a listing is approved (pending_review to active). Modules add
+# theirs when imported (compliance, workflow); each raises AppError to refuse. They run inside
+# `transition_listing`, the one place a status changes, so no caller can skip them.
+APPROVAL_GUARDS: list[Callable[[Session, UUID], None]] = []
 
 
 def transition_listing(
@@ -365,6 +423,9 @@ def transition_listing(
         )
     if data.to not in allowed_transitions(ctx, listing):
         raise _forbidden()
+    if previous == "pending_review" and data.to == "active":
+        for guard in APPROVAL_GUARDS:
+            guard(session, listing.id)
 
     now = datetime.now(UTC)
     listing.status = data.to
@@ -388,6 +449,7 @@ def transition_listing(
         listing.closed_at = now
     _flush(session)
     _record_status(session, ctx, listing, previous, data.reason)
+    _changed(session, listing)
     session.flush()
     return listing, previous
 
@@ -405,6 +467,7 @@ def archive_listing(session: Session, ctx: TenantContext, listing_id: UUID) -> L
     if listing.archived_at is None:
         listing.archived_at = datetime.now(UTC)
         _flush(session)
+        _changed(session, listing)
     return listing
 
 

@@ -9,8 +9,9 @@ from fastapi import Depends, Header, Request
 
 from app.core.db import SessionDep
 from app.core.errors import AppError
+from app.modules.apikeys import service as apikeys
 from app.modules.audit import service as audit
-from app.modules.auth.deps import CurrentUser, client_ip
+from app.modules.auth.deps import _authenticated, _current_user, client_ip
 from app.modules.auth.models import User
 from app.modules.organisations import service
 from app.modules.organisations.permissions import ALL_PERMISSIONS, ROLE_PERMISSIONS, Permission
@@ -24,12 +25,15 @@ class TenantContext:
     organisation_id: UUID
     # None when a platform administrator acts in an organisation they do not belong to.
     role: str | None
+    # Set when the request came with an API key: the permissions it may use at most.
+    scopes: frozenset[str] | None = None
 
     @property
     def permissions(self) -> frozenset[Permission]:
-        if self.user.is_platform_admin:
+        if self.user.is_platform_admin and self.scopes is None:
             return ALL_PERMISSIONS
-        return ROLE_PERMISSIONS[self.role] if self.role is not None else frozenset()
+        held = ROLE_PERMISSIONS[self.role] if self.role is not None else frozenset()
+        return held if self.scopes is None else held & self.scopes
 
     def has(self, permission: Permission) -> bool:
         return permission in self.permissions
@@ -42,12 +46,27 @@ def _forbidden() -> AppError:
 def _tenant_scope(
     request: Request,
     session: SessionDep,
-    user: CurrentUser,
     x_organisation_id: Annotated[
         UUID | None,
         Header(description="Organisation to act in. Optional when you belong to exactly one."),
     ] = None,
+    authorization: Annotated[
+        str | None,
+        Header(
+            description="`Bearer <API key>` for third-party clients; the browser uses a cookie."
+        ),
+    ] = None,
 ) -> TenantContext:
+    if authorization is not None and authorization.startswith("Bearer "):
+        key, key_user, role = apikeys.authenticate(session, authorization.removeprefix("Bearer "))
+        # Read by the usage middleware after the response.
+        request.state.api_key = (key.id, key.organisation_id)
+        session.commit()  # keep last_used_at even if the request fails
+        apikeys.check_rate(session, key)
+        if x_organisation_id is not None and x_organisation_id != key.organisation_id:
+            raise _forbidden()
+        return TenantContext(key_user, key.organisation_id, role, frozenset(key.scopes))
+    user = _current_user(_authenticated(request, session))
     memberships = service.list_memberships(session, user.id)
 
     if x_organisation_id is None:

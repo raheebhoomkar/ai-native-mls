@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.logging import request_id_var
@@ -66,3 +66,23 @@ def list_for_organisation(
 ) -> tuple[Sequence[AuditEvent], str | None]:
     stmt = select(AuditEvent).where(AuditEvent.organisation_id == organisation_id)
     return paginate(session, stmt, page, sort=AuditEvent.occurred_at, id_column=AuditEvent.id)
+
+
+def list_for_listing(
+    session: Session, organisation_id: UUID, listing_id: UUID, limit: int = 100
+) -> Sequence[AuditEvent]:
+    """Events about one listing, newest first: those that target it, and those about its
+    checks and runs that name it in their detail."""
+    key = str(listing_id)
+    return session.scalars(
+        select(AuditEvent)
+        .where(
+            AuditEvent.organisation_id == organisation_id,
+            or_(
+                (AuditEvent.target_type == "listing") & (AuditEvent.target_id == key),
+                AuditEvent.detail["listing_id"].astext == key,
+            ),
+        )
+        .order_by(AuditEvent.occurred_at.desc(), AuditEvent.id.desc())
+        .limit(limit)
+    ).all()

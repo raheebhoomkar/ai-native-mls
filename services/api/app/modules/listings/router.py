@@ -12,17 +12,24 @@ from app.modules.audit import service as audit
 from app.modules.auth import service as auth
 from app.modules.auth.deps import client_ip
 from app.modules.compliance import service as compliance
+from app.modules.geo import enrichment
+from app.modules.geo import service as geo
+from app.modules.geo.distance import haversine_km
+from app.modules.geo.geocoder import OSM_ATTRIBUTION
 from app.modules.listings import service
 from app.modules.listings.models import Listing, Property
 from app.modules.listings.schemas import (
     Address,
     AgentOut,
     Area,
+    EnrichmentItemOut,
     ListingCreate,
     ListingFeatureOut,
     ListingFilters,
     ListingOut,
     ListingUpdate,
+    Location,
+    LocationIn,
     Money,
     PropertyCreate,
     PropertyOut,
@@ -32,6 +39,14 @@ from app.modules.listings.schemas import (
 )
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext, require
+from app.modules.search import service as search
+from app.modules.search.schemas import (
+    DEMO_NOTE,
+    Explanation,
+    SearchFilters,
+    SearchHit,
+    SearchResults,
+)
 
 properties_router = APIRouter(prefix="/properties", tags=["properties"])
 listings_router = APIRouter(prefix="/listings", tags=["listings"])
@@ -66,6 +81,20 @@ def _property_out(prop: Property) -> PropertyOut:
             else None
         ),
         year_built=prop.year_built,
+        location=(
+            Location(
+                latitude=prop.latitude,
+                longitude=prop.longitude,
+                source=prop.geo_source,
+                precision=prop.geo_precision,
+                located_at=prop.located_at,
+                attribution=OSM_ATTRIBUTION if prop.geo_source == "nominatim" else None,
+            )
+            if prop.latitude is not None and prop.longitude is not None and prop.located_at
+            else None
+        ),
+        location_status=prop.geo_status,
+        location_error=prop.geo_error,
         version=prop.version,
         created_at=prop.created_at,
         updated_at=prop.updated_at,
@@ -73,8 +102,17 @@ def _property_out(prop: Property) -> PropertyOut:
     )
 
 
+def _distance(prop: Property, near: tuple[float, float] | None) -> float | None:
+    if near is None or prop.latitude is None or prop.longitude is None:
+        return None
+    return round(haversine_km(*near, float(prop.latitude), float(prop.longitude)), 2)
+
+
 def _listings_out(
-    session: Session, ctx: TenantContext, listings: Sequence[Listing]
+    session: Session,
+    ctx: TenantContext,
+    listings: Sequence[Listing],
+    near: tuple[float, float] | None = None,
 ) -> list[ListingOut]:
     """Build responses for listings the caller may read, loading related rows in three queries."""
     properties = service.get_properties(session, [item.property_id for item in listings])
@@ -106,6 +144,7 @@ def _listings_out(
             property=_property_out(properties[item.property_id]),
             allowed_transitions=service.allowed_transitions(ctx, item),
             can_edit=service.can_edit(ctx, item) and item.archived_at is None,
+            distance_km=_distance(properties[item.property_id], near),
             version=item.version,
             created_at=item.created_at,
             updated_at=item.updated_at,
@@ -180,6 +219,30 @@ def update_property(
     return _property_out(prop)
 
 
+@properties_router.put("/{property_id}/location", responses=_ERRORS)
+def set_property_location(
+    property_id: UUID, body: LocationIn, request: Request, session: SessionDep, ctx: CanWrite
+) -> PropertyOut:
+    """Set the point by hand. It replaces any geocoded point and is kept on address changes."""
+    prop = service.get_property(session, ctx, property_id)
+    geo.set_location(session, prop, body.latitude, body.longitude)
+    _audit(request, session, ctx, "property.location_set", "property", prop.id)
+    return _property_out(prop)
+
+
+@properties_router.get("/{property_id}/enrichment", responses=_ERRORS)
+def get_property_enrichment(
+    property_id: UUID, session: SessionDep, ctx: CanRead
+) -> list[EnrichmentItemOut]:
+    """Neighbourhood facts, each with its source and date, or "not available" with a reason."""
+    prop = service.get_property(session, ctx, property_id)
+    if prop.latitude is None or prop.longitude is None:
+        items = enrichment.not_available("This property has no location yet.")
+    else:
+        items = enrichment.get_enricher().enrich(prop.latitude, prop.longitude)
+    return [EnrichmentItemOut.model_validate(item) for item in items]
+
+
 @properties_router.delete("/{property_id}", status_code=204, responses=_ERRORS)
 def archive_property(
     property_id: UUID, request: Request, session: SessionDep, ctx: CanWrite
@@ -214,7 +277,40 @@ def list_listings(
     Do not change filters or sort while following `next_cursor`.
     """
     items, next_cursor = service.list_listings(session, ctx, filters, page)
-    return Page(items=_listings_out(session, ctx, items), next_cursor=next_cursor)
+    near = (
+        (filters.near_lat, filters.near_lon)
+        if filters.near_lat is not None and filters.near_lon is not None
+        else None
+    )
+    return Page(items=_listings_out(session, ctx, items, near), next_cursor=next_cursor)
+
+
+@listings_router.get("/search", responses={**_ERRORS, 503: {"model": ErrorResponse}})
+def search_listings(
+    session: SessionDep, ctx: CanRead, filters: Annotated[SearchFilters, Query()]
+) -> SearchResults:
+    """Listings ranked by how well they match a description. The usual filters and visibility
+    rules apply first; ranking only orders what you may already see.
+    """
+    found = search.search(session, ctx, filters, filters.q, filters.limit)
+    applied = sorted(filters.model_dump(exclude_defaults=True, exclude={"q", "limit", "sort"}))
+    out = _listings_out(session, ctx, [hit.listing for hit in found.hits])
+    return SearchResults(
+        items=[
+            SearchHit(
+                listing=listing,
+                score=hit.score,
+                explanation=Explanation(
+                    matched_words=hit.matched_words,
+                    filters=applied,
+                    source=found.source,
+                    model=found.model,
+                    note=DEMO_NOTE if found.source == "demo" else None,
+                ),
+            )
+            for hit, listing in zip(found.hits, out, strict=True)
+        ]
+    )
 
 
 @listings_router.get("/{listing_id}", responses=_ERRORS)
@@ -252,10 +348,6 @@ def transition_listing(
     listing_id: UUID, body: TransitionRequest, request: Request, session: SessionDep, ctx: CanWrite
 ) -> ListingOut:
     """Change a listing's status. `allowed_transitions` on the listing says what you may request."""
-    if body.to == "active" and service.get_listing(session, ctx, listing_id).status == (
-        "pending_review"
-    ):
-        compliance.ensure_approvable(session, listing_id)
     listing, previous = service.transition_listing(session, ctx, listing_id, body)
     _audit(
         request,

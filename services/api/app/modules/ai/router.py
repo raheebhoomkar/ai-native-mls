@@ -13,6 +13,7 @@ from app.modules.auth.deps import client_ip
 from app.modules.listings import service as listings
 from app.modules.organisations.deps import TenantContext, require
 from app.modules.review.models import ReviewDecision
+from app.modules.workflow import service as workflow
 
 router = APIRouter(prefix="/listings/{listing_id}/ai/extractions", tags=["ai"])
 runs_router = APIRouter(prefix="/ai/runs", tags=["ai"])
@@ -101,6 +102,7 @@ def decide(
         value=body.value,
         note=body.note,
     )
+    workflow.wake(session, session.get_one(AgentRun, run_id).listing_id)
     audit.record(
         session,
         "ai.suggestion_decided",

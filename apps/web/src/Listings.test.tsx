@@ -74,8 +74,9 @@ function stubApi(
       if (path === "/api/v1/auth/me") return Response.json(ME);
       if (path === "/api/v1/organisations/current")
         return Response.json(organisation(permissions));
-      if (path === "/api/v1/listings") {
+      if (path === "/api/v1/listings" || path === "/api/v1/listings/search") {
         const params = new URLSearchParams(query);
+        params.set("_path", path);
         searches.push(params);
         return Response.json(search(params));
       }
@@ -126,6 +127,7 @@ test("filters are sent to the API only when Search is pressed, and can be cleare
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
   expect(await screen.findByText("No listings match.")).toBeTruthy();
   expect(Object.fromEntries(searches[1]!)).toEqual({
+    _path: "/api/v1/listings",
     q: "villa",
     status: "active",
     scope: "all",
@@ -136,6 +138,52 @@ test("filters are sent to the API only when Search is pressed, and can be cleare
   fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
   expect(await screen.findByText("Lake-view apartment")).toBeTruthy();
   expect((screen.getByLabelText("Search") as HTMLInputElement).value).toBe("");
+});
+
+test("describing the home runs a ranked search and explains each match", async () => {
+  const searches = stubApi(["listing:read"], (query) =>
+    query.get("_path") === "/api/v1/listings/search"
+      ? {
+          items: [
+            {
+              listing: listing("l1", "Sea-facing flat", "1"),
+              score: 0.4321,
+              explanation: {
+                matched_words: ["sea", "facing"],
+                filters: ["min_price"],
+                source: "demo",
+                model: "hashing-v1",
+                note: "Demo embedder: it matches shared words and spellings, not meaning.",
+              },
+            },
+          ],
+          next_cursor: null,
+        }
+      : { items: [], next_cursor: null },
+  );
+  render(<App />);
+  await screen.findByText("No listings match.");
+
+  fireEvent.change(screen.getByLabelText("Describe the home"), {
+    target: { value: " sea facing " },
+  });
+  fireEvent.change(screen.getByLabelText("Min price"), {
+    target: { value: "100" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+  const row = (await screen.findByText("Sea-facing flat")).closest("tr")!;
+  expect(row.textContent).toContain("Score 0.43");
+  expect(row.textContent).toContain("words: sea, facing");
+  expect(row.textContent).toContain("filters: min price");
+  expect(screen.getByText(/not meaning/)).toBeTruthy();
+  // The description is the query; sort does not apply to a ranked search.
+  expect(Object.fromEntries(searches[1]!)).toEqual({
+    _path: "/api/v1/listings/search",
+    q: "sea facing",
+    scope: "all",
+    min_price: "100",
+  });
 });
 
 test("load more appends the next page using the cursor", async () => {
@@ -191,4 +239,62 @@ test("without listing:read there is no Listings link and the page is refused", a
   ).toBeTruthy();
   expect(screen.queryByRole("link", { name: "Listings" })).toBeNull();
   expect(searches).toHaveLength(0);
+});
+
+// MapLibre needs WebGL; this stand-in reports a fixed visible area.
+vi.mock("./MapView", () => ({
+  MapView: ({
+    points,
+    onSearchArea,
+  }: {
+    points: unknown[];
+    onSearchArea?: (bounds: Record<string, number>) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onSearchArea?.({
+          min_lat: 18,
+          min_lon: 72.5,
+          max_lat: 19.5,
+          max_lon: 73.5,
+        })
+      }
+    >
+      Search this area ({points.length} on map)
+    </button>
+  ),
+}));
+
+test("the map searches the visible area until any area is chosen", async () => {
+  const located = {
+    ...listing("l1", "Lake-view apartment", "25000000.00"),
+    property: {
+      ...listing("l1", "", "1").property,
+      location: { latitude: "19.0760000", longitude: "72.8777000" },
+    },
+  };
+  const searches = stubApi(["listing:read"], () => ({
+    items: [located, listing("l2", "Plot", "100.00")],
+    next_cursor: null,
+  }));
+  render(<App />);
+  await screen.findByText("Lake-view apartment");
+
+  fireEvent.click(screen.getByRole("button", { name: "Show map" }));
+  expect(
+    screen.getByText(
+      "1 of the listings below have no location and are not on the map.",
+    ),
+  ).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: /Search this area \(1 on map\)/ }),
+  );
+  await waitFor(() =>
+    expect(searches.at(-1)?.get("min_lat")).toBe("18.000000"),
+  );
+  expect(searches.at(-1)?.get("max_lon")).toBe("73.500000");
+
+  fireEvent.click(await screen.findByRole("button", { name: "Any area" }));
+  await waitFor(() => expect(searches.at(-1)?.has("min_lat")).toBe(false));
 });

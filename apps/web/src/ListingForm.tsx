@@ -364,21 +364,15 @@ export function EditListing({
   const [property, setProperty] = useState(NEW_PROPERTY);
   const [saved, setSaved] = useState<"listing" | "property" | null>(null);
   const [conflict, setConflict] = useState(false);
+  // A listing save refused because someone saved first: their version, to compare.
+  const [theirs, setTheirs] = useState<Listing | null>(null);
   const [reloads, setReloads] = useState(0);
   const saveListing = useAction();
   const saveProperty = useAction();
 
   function show(fresh: Listing) {
     setLoaded(fresh);
-    setListing({
-      title: fresh.title,
-      listing_type: fresh.listing_type,
-      amount: fresh.list_price.amount,
-      currency: fresh.list_price.currency,
-      visibility: fresh.visibility,
-      expires_on: fresh.expires_on ?? "",
-      remarks: fresh.remarks ?? "",
-    });
+    setListing(listingForm(fresh));
     setProperty(fromProperty(fresh.property));
   }
 
@@ -388,6 +382,7 @@ export function EditListing({
       .then((fresh) => {
         if (cancelled) return;
         setConflict(false);
+        setTheirs(null);
         show(fresh);
       })
       .catch((error) => !cancelled && setLoadError(describeError(error)));
@@ -425,20 +420,32 @@ export function EditListing({
       </section>
     );
 
-  function submitListing(event: FormEvent) {
-    event.preventDefault();
+  /** Save the typed details on top of `version`; on a conflict, show what changed. */
+  function saveDetails(version: number) {
     setSaved(null);
-    void saveListing.run(() =>
-      guarded(async () => {
+    void saveListing.run(async () => {
+      try {
         show(
           await api<Listing>(`/listings/${loaded!.id}`, {
             method: "PATCH",
-            body: { version: loaded!.version, ...listingBody(listing) },
+            body: { version, ...listingBody(listing) },
           }),
         );
+        setTheirs(null);
         setSaved("listing");
-      }),
-    );
+      } catch (error) {
+        if (error instanceof ApiError && error.code === "version_conflict") {
+          setTheirs(await api<Listing>(`/listings/${loaded!.id}`));
+          return;
+        }
+        throw error;
+      }
+    });
+  }
+
+  function submitListing(event: FormEvent) {
+    event.preventDefault();
+    saveDetails(loaded!.version);
   }
 
   function submitProperty(event: FormEvent) {
@@ -481,6 +488,19 @@ export function EditListing({
         </div>
       )}
 
+      {theirs && (
+        <ConflictPanel
+          mine={listing}
+          theirs={theirs}
+          busy={saveListing.busy}
+          onKeepMine={() => saveDetails(theirs.version)}
+          onUseTheirs={() => {
+            show(theirs);
+            setTheirs(null);
+          }}
+        />
+      )}
+
       <form
         className="wide"
         onSubmit={submitListing}
@@ -514,5 +534,91 @@ export function EditListing({
         </div>
       </form>
     </section>
+  );
+}
+
+function listingForm(fresh: Listing): ListingFormState {
+  return {
+    title: fresh.title,
+    listing_type: fresh.listing_type,
+    amount: fresh.list_price.amount,
+    currency: fresh.list_price.currency,
+    visibility: fresh.visibility,
+    expires_on: fresh.expires_on ?? "",
+    remarks: fresh.remarks ?? "",
+  };
+}
+
+const FIELD_LABELS: Record<keyof ListingFormState, string> = {
+  title: "Title",
+  listing_type: "Sale or rent",
+  amount: "Price",
+  currency: "Currency",
+  visibility: "Visibility",
+  expires_on: "Expires on",
+  remarks: "Remarks",
+};
+
+/** Someone saved the listing while you were editing: show both versions and let the user
+ * decide. Nothing is overwritten without a click. */
+function ConflictPanel({
+  mine,
+  theirs,
+  busy,
+  onKeepMine,
+  onUseTheirs,
+}: {
+  mine: ListingFormState;
+  theirs: Listing;
+  busy: boolean;
+  onKeepMine: () => void;
+  onUseTheirs: () => void;
+}) {
+  const other = listingForm(theirs);
+  const same = (a: string, b: string) =>
+    a.trim() === b.trim() || (a !== "" && b !== "" && Number(a) === Number(b));
+  const differ = (
+    Object.keys(FIELD_LABELS) as (keyof ListingFormState)[]
+  ).filter((key) => !same(mine[key], other[key]));
+  return (
+    <div className="notice" role="alert" aria-label="Edit conflict">
+      <p>
+        Someone else saved this listing while you were editing (now version{" "}
+        {theirs.version}). Your changes are not saved yet.
+      </p>
+      {differ.length === 0 ? (
+        <p>Their version has the same details as yours.</p>
+      ) : (
+        <div className="table-scroll">
+          <table>
+            <caption>Fields that differ</caption>
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Yours</th>
+                <th scope="col">Theirs (saved)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {differ.map((key) => (
+                <tr key={key}>
+                  <th scope="row">{FIELD_LABELS[key]}</th>
+                  <td>{mine[key] || "(empty)"}</td>
+                  <td>{other[key] || "(empty)"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p>
+        <button type="button" disabled={busy} onClick={onKeepMine}>
+          Save mine over theirs
+        </button>{" "}
+        <button type="button" disabled={busy} onClick={onUseTheirs}>
+          Use theirs and discard mine
+        </button>
+      </p>
+    </div>
   );
 }

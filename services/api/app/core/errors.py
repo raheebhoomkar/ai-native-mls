@@ -57,12 +57,14 @@ class AppError(Exception):
         code: str,
         message: str,
         details: list[ErrorDetail] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details or []
+        self.headers = headers or {}
 
 
 def _envelope(
@@ -79,7 +81,9 @@ def _envelope(
 def install_error_handling(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
-        return _envelope(exc.status_code, exc.code, exc.message, exc.details)
+        response = _envelope(exc.status_code, exc.code, exc.message, exc.details)
+        response.headers.update(exc.headers)
+        return response
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:

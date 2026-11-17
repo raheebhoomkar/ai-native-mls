@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 11 of the plan are done. Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 19 of the plan are done (Phases A, B and C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -19,6 +19,13 @@ Sprints 0 to 11 of the plan are done. Per-sprint notes, with design decisions an
 | Privacy redaction | Blur faces, plates, phone numbers, watermarks and signs in a copy; approve or reject it | `s9-redaction.md` |
 | Import | Check and import a CSV of listings; see where an imported listing came from | `s10-import.md` |
 | Compliance flags | Check titles and remarks against an illustrative India policy; review queue; accept, dismiss, request edits; appeal | `s11-compliance.md` |
+| Maps and location | See where a property is and how exact the point is; set it by hand; show listings on a map and search the visible area | `s12-geospatial.md` |
+| Semantic search | Describe the home in your own words; listings are ranked by match, with the reason shown | `s13-semantic-search.md` |
+| Valuation | Estimate a range from comparable reported sales, with comps, assumptions and a days-on-market simulation | `s14-valuation.md` |
+| Workflow | Run every step on a listing at once (locate, read photos, policy check, human review, search index, valuation); it pauses for review, blocks approval until done; cancel, retry; Monitor page | `s15-workflow-core.md`, `s16-review-gate-monitor.md` |
+| Public API | Create API keys with scopes and a rate limit; call the API from another program with a key; safe retries with `Idempotency-Key` | `s17-public-api.md`, `docs/api/developer-guide.md` |
+| Webhooks | Send signed events (listing changed, property changed, workflow finished) to another system; see each delivery, send again | `s18-webhooks.md` |
+| Team and notifications | Assign a listing to a teammate, comment or keep private notes, see the listing's activity; notifications with preferences; see both versions when someone saved first | `s19-collaboration.md` |
 
 ## 1. Prerequisites
 
@@ -123,11 +130,11 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17: API 241 passed, 3 deselected (the deselected ones are live Gemini tests); web 59 passed. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17 (end of Phase C): API 334 passed, 3 deselected (the deselected ones are live Gemini tests); web 79 passed; Playwright 2 passed. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
-Browser end-to-end test (app running as in step 3, seed loaded, Chrome installed). An agent signs in, creates a listing, finds it, submits it for review and archives it:
+Browser end-to-end tests (app and worker running as in step 3, seed loaded, Chrome installed). One journey: an agent signs in, creates a listing, finds it, submits it for review and archives it. The other: an agent runs the workflow on a new listing, comments, sees the run on the Monitor and archives the listing:
 
 ```bash
 cd apps/web && pnpm e2e
@@ -151,7 +158,7 @@ Do these in order in http://localhost:5173. Sign out with the button in the head
 1. Sign in as `sunrise.admin@demo.example.com`, open Members.
 2. Invite a new email as agent. A one-time invitation link is shown once (no email is sent).
 3. Open that link in a private window and accept it, setting a name and password. The page says "You are now a member of Sunrise Realty. Sign in to continue." Sign in with the new account.
-4. Back as the admin: the person is listed; change their role, then remove them. Both work and appear in the audit log (`GET /api/v1/audit-events`, see 6.10).
+4. Back as the admin: the person is listed; change their role, then remove them. Both work and appear in the audit log (`GET /api/v1/audit-events`, see 6.11).
 5. Sign in as `sunrise.agent@demo.example.com`: Members shows the list but no invite, role or remove controls.
 
 ### 6.3 Platform administration
@@ -230,7 +237,81 @@ The worker must be running. The seed adds `[Demo] 2 BHK to let near the IT park`
 
 The listing's text never changes because of a check or a decision; the agent edits it.
 
-### 6.10 API checks
+### 6.10 Maps and location (worker must be running)
+
+New and changed addresses are located by a background job. Without settings, the labelled demo geocoder is used: it knows the centres of a few Indian cities and of the seeded localities (Powai, Andheri West, Worli, Koregaon Park, Baner), and nothing more precise. `GEOCODER=nominatim` uses OpenStreetMap Nominatim instead (1 request per second; set `GEOCODER_USER_AGENT` with a contact). Map tiles come from OpenStreetMap's public tile server, which allows light use only.
+
+1. As `sunrise.agent@demo.example.com`, open `[Demo] 3 BHK apartment near the lake`. The "Location" section shows the coordinates, "Accurate to the area", "Source: demo geocoder (approximate centres of known areas and cities)" and the date, with a map marker in Powai. The map credits "© OpenStreetMap contributors".
+2. "Set the point by hand": click the map (the coordinates fill in) or type them, then "Save point". The text now says "Accurate to the building. Source: set by hand". Change the address: the point set by hand stays.
+3. Create a property in a city the demo does not know (for example "Atlantis"): the listing shows "Finding this address on the map…", then "No match for this address. Set the point by hand." Change the city to Pune: it is located again.
+4. "Neighbourhood" lists nearest metro station, schools within 2 km and flood risk as "Not available: No neighbourhood data source is set up." No value is invented.
+5. Listings page: "Show map" shows the listings of the current page as markers (click one to open it) and says how many have no location. Zoom to Mumbai and press "Search this area": only listings inside the map area are listed, with "Any area" to undo. "Clear filters" also removes it.
+6. As `harbour.admin@demo.example.com`, a shared Sunrise listing shows its point and map but no "Set the point by hand" and no "Neighbourhood".
+7. API: `GET /api/v1/listings?near_lat=19.076&near_lon=72.8777&radius_km=10` lists listings within 10 km with `distance_km`; `min_lat`, `min_lon`, `max_lat`, `max_lon` give a box. `PUT /api/v1/properties/{id}/location` sets a point; audit actions `property.geocoded` and `property.location_set`.
+
+### 6.11 Semantic search (worker must be running)
+
+Every listing change writes an outbox event, and the worker re-indexes the listing. Without settings, the labelled demo embedder is used: it matches shared words and spellings, not meaning. `EMBEDDER=gemini` (with `GEMINI_API_KEY`) uses Gemini embeddings; see [AI with a real key](#ai-with-a-real-key). Vectors are kept in Postgres unless `VECTOR_STORE=qdrant`.
+
+1. As `sunrise.agent@demo.example.com`, Listings page, type `apartment near the lake` in "Describe the home" and press Search. "[Demo] 3 BHK apartment near the lake" comes first. Above the table: "Best matches first. Demo embedder: it matches shared words and spellings, not meaning." The last column, "Why it matched", shows the score, the shared words and any filters used.
+2. Add a filter (for example City `Pune`) and search again: only Pune listings are ranked, and "filters: city" appears.
+3. Edit a listing's title to include `rooftop terrace`, wait a few seconds, describe `rooftop terrace`: it comes first. Withdraw it: it no longer appears.
+4. As `harbour.admin@demo.example.com`, describe `apartment near the lake`: Harbour's own listings and Sunrise's shared active listings appear; Sunrise drafts and private listings never do.
+5. Clear "Describe the home" and press Search: the normal list and sort come back.
+6. API: `GET /api/v1/listings/search?q=sea%20facing&city=Mumbai` returns `items` of `{listing, score, explanation}`. If the embedder is down: 503 `search_unavailable`.
+
+### 6.12 Valuation
+
+Estimates use sold listings the caller may see whose sale price the listing agent reported. The seed adds six `[Demo] Sold:` apartments in Powai with invented prices and dates. This is decision support, not an appraisal.
+
+1. As `sunrise.agent@demo.example.com`, open `[Demo] 3 BHK apartment near the lake`. The "Valuation" section starts with "Not an appraisal and not a guaranteed sale price…". Press "Estimate value".
+2. You see "Estimated range ₹… to ₹…, middle ₹…. From 6 reported sales closed between … and …, by price per sq ft times 1250 sq ft." Below: "Days on market" with simulated percentiles and the share sold within 30, 60 and 90 days ("A scenario, not a forecast"), "Offers are not recorded…", and a comparable sales table whose caption says the prices are reported by agents and not verified.
+3. Open "Assumptions": the comp rules, "Condition is not recorded, so it is not used", the model and simulation versions and the seed.
+4. Open `[Demo] Garden villa` (Pune, no sold villas) and press "Estimate value": "Insufficient data: 0 comparable sales found, at least 3 needed. No estimate is shown." No number appears.
+5. As `harbour.admin@demo.example.com`, open the shared lake listing: there is no "Valuation" section. `POST /api/v1/listings/{id}/valuations` answers 404.
+6. Reproducibility: `POST /api/v1/listings/{id}/valuations` with `{"seed": 42}` twice gives the same `result.simulation`.
+7. Outcome: value a listing, then mark it sold with a price; with the worker running, the valuation shows "Sold for … The estimate's middle was …% above/below it, inside/outside the range." `GET /api/v1/valuations/evaluation` reports the count, median absolute error and share inside the range per model version.
+
+### 6.12a Workflow (worker must be running)
+
+1. Sign in as `sunrise.agent@demo.example.com` and open one of your listings.
+2. In "Workflow", click "Run workflow". The button changes to "Workflow running…" and each step shows its status.
+3. On a listing with photos the status soon reads "Waiting for a person to review." The Human review step names what waits (photo suggestions, policy findings); Add to search and Estimate value stay "Not started".
+4. Submit the listing for review, then sign in as `sunrise.admin@demo.example.com` and try to approve it: refused with "The workflow on this listing has not finished and waits for a review."
+5. Decide every photo suggestion (agent) and every policy finding (admin). Within a few seconds the run goes on by itself and reads "Finished." Approval now works.
+6. On a listing without photos the run finishes without pausing; Read the photos shows "Skipped" with the reason.
+7. Start a run and click "Cancel run": the status reads "Cancelled". Click "Retry run": finished steps are kept and the rest run again.
+8. Open "Monitor" in the nav. "Not finished" lists runs still going; switch to "Failed" or "All". As `sunrise.admin@demo.example.com` a "Failed background jobs" list with "Retry job" appears below; agents do not see it.
+9. Sign in as `harbour.admin@demo.example.com` and open a Sunrise listing that is shared: there is no Workflow section, and Monitor shows no Sunrise runs.
+
+### 6.12b API keys and the sample client
+
+1. Sign in as `sunrise.admin@demo.example.com`, open "API keys", name a key, tick both scopes, set 5 requests per minute, click "Create key". The key appears once in a notice; copy it.
+2. In a terminal from the repository root: `MLS_API_URL=http://localhost:8000/api/v1 MLS_API_KEY=<key> python3 examples/mls_client.py list` prints up to 10 Sunrise listings. `... create` prints "Created draft listing <id>"; it shows in the app as a draft.
+3. Run `list` several times quickly: after 5 requests in a minute the client waits about a minute (HTTP 429) and then prints the list.
+4. Back on "API keys" the key shows its use this minute and when it was last used. Click "Revoke": the client now exits with `HTTP 401 invalid_api_key`.
+5. Sign in as `sunrise.agent@demo.example.com`: there is no "API keys" link.
+
+### 6.12c Webhooks (worker must be running)
+
+1. Sign in as `sunrise.admin@demo.example.com`, open "Webhooks", enter `http://localhost:9099/`, tick "A listing is created or changed" and "A listing workflow finishes…", click "Add webhook". Copy the secret from the notice.
+2. In a terminal from the repository root: `MLS_WEBHOOK_SECRET=<secret> python3 examples/webhook_receiver.py 9099`.
+3. Click "Send test". Within a few seconds the terminal prints `signature ok: ping …`. "Show deliveries" lists it as "Delivered", 1 attempt.
+4. As `sunrise.agent@demo.example.com`, edit a listing or run its workflow. The terminal prints `signature ok: listing.changed …` (and `workflow.finished …` when the run ends).
+5. Stop the receiver (Ctrl+C) and edit a listing again. The delivery shows "Trying" with the next attempt time and the error. Start the receiver again: the next attempt is delivered. After 6 failed attempts it shows "Failed" and "Send again".
+6. Click "Turn off": no more deliveries are sent, and "Send test" disappears.
+
+### 6.12d Team, notifications and edit conflicts
+
+1. Sign in as `sunrise.agent@demo.example.com`, open one of your listings. The "Team" section shows "Assigned to: nobody besides the listing agent".
+2. Choose "Assign to" a teammate (for example Sunrise's admin) and click "Assign". Post a comment, then tick "Private note" and save a note.
+3. Sign in as `sunrise.admin@demo.example.com`. The "Notifications" link shows a count; the page lists "… assigned you: …". Open the listing: the team comment shows, the private note does not. Reply with a comment.
+4. Back as the agent, the reply is in Notifications. Untick "Someone comments on a listing I work on" and ask the admin to comment again: no new notification.
+5. "Show activity" on the listing lists edits, status changes, workflow runs and comments, newest first.
+6. Edit conflict: open the same listing's edit page in two browser windows (agent and admin). Change the title in both; save in the first, then in the second. The second shows "Someone else saved this listing…" with a table of the fields that differ. "Use theirs and discard mine" loads their version; "Save mine over theirs" saves yours on top.
+7. Sign in as `harbour.admin@demo.example.com` and open a shared Sunrise listing: there is no Team section.
+
+### 6.13 API checks
 
 The interactive docs at http://localhost:8000/api/v1/docs can call every endpoint. Sign in with `POST /api/v1/auth/login` there first; the session cookie is then used for the other calls. From a terminal:
 
@@ -244,7 +325,7 @@ curl -s -b /tmp/mls.cookies 'http://localhost:8000/api/v1/audit-events?limit=10'
 
 The audit log has no screen yet; read it through `GET /api/v1/audit-events` as an administrator. API conventions (error envelope, `X-Organisation-ID`, `version` for edits, cursor pagination) are in the README.
 
-### 6.11 Phone width
+### 6.14 Phone width
 
 In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideways; wide tables scroll inside their own box; forms are one column.
 
@@ -252,13 +333,19 @@ In Chrome DevTools, device toolbar, 375 px wide. The pages do not scroll sideway
 
 Put `GEMINI_API_KEY=...` in `.env` and restart the API and the worker. Get a key at https://aistudio.google.com/apikey. The free tier may use what you send to improve Google's models, so upload demo photos only. Photos are sent without camera or GPS data. Decisions about the provider are in `docs/decisions/0004-*.md` and `0005-*.md`.
 
+Semantic search stays on the demo embedder until you also set `EMBEDDER=gemini`, because switching sends listing text to Google and re-embeds every listing. After switching (or after changing `VECTOR_STORE`), restart the API and the worker and run `cd services/api && .venv/bin/python -m app.modules.search.cli reindex`. Until the worker finishes, search returns only listings already embedded with the new model.
+
+To use Qdrant instead of Postgres for vectors locally: `docker compose --profile qdrant up -d`, set `VECTOR_STORE=qdrant` in `.env`, restart, re-index. For Qdrant Cloud set `QDRANT_URL` (https) and `QDRANT_API_KEY`.
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 |---|---|
 | API exits at start with a settings error | `.env` missing or a value malformed. `cp .env.example .env`. |
 | `connection refused` on 5432 | Postgres not running: `docker compose up -d --wait`. Another Postgres on 5432: set `POSTGRES_PORT` and the port in `DATABASE_URL` in `.env`. |
-| Photos stay "Processing", AI runs stay queued | The worker (terminal 2) is not running. |
+| Photos stay "Processing", AI runs stay queued, locations stay "Finding this address" | The worker (terminal 2) is not running. |
+| Seeded properties made before Sprint 12 have no location | Run the seed again: it queues a lookup for them. |
+| "Describe the home" finds nothing, or misses listings made before Sprint 13 | Worker not running, or the listings were never indexed. Run the seed again (it queues indexing for old demo listings) or `python -m app.modules.search.cli reindex`. |
 | A check fails with `No handler registered for job kind ...` | A worker started before you pulled new code took the job. Stop every old `python -m app.worker` process, start one again, then run the check again. |
 | Photos stop loading after an API restart | Download links are signed with a per-process key in development. Reload the page. |
 | Sign-in works but lists are empty | Seed not loaded: `cd services/api && .venv/bin/python -m app.seed`. |

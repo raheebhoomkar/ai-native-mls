@@ -41,8 +41,21 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.5-flash"
     # Gemini takes 15-40 s per call; overloaded models answer 503 only after about 80 s.
     ai_timeout_seconds: float = Field(default=90, ge=5, le=600)
+    # Geocoder; see app/modules/geo/geocoder.py. "demo" knows city centres only.
+    geocoder: Literal["demo", "nominatim"] = "demo"
+    nominatim_url: str = "https://nominatim.openstreetmap.org"
+    # Nominatim's usage policy asks for an identifying User-Agent; operators add a contact here.
+    geocoder_user_agent: str = "ai-native-mls/0.1"
+    # Embedder for semantic search; see app/modules/search/embedder.py. Not switched on by the
+    # key alone: a new embedder re-indexes every listing and sends listing text to Google.
+    embedder: Literal["demo", "gemini"] = "demo"
+    gemini_embedding_model: str = "gemini-embedding-001"
+    # Where listing vectors live; see app/modules/search/vector_store.py.
+    vector_store: Literal["postgres", "qdrant"] = "postgres"
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: SecretStr | None = None
 
-    @field_validator("gemini_api_key", mode="before")
+    @field_validator("gemini_api_key", "qdrant_api_key", mode="before")
     @classmethod
     def _blank_is_none(cls, value: object) -> object:
         return value or None
@@ -53,6 +66,8 @@ class Settings(BaseSettings):
             raise ValueError("MEDIA_SIGNING_KEY must be set in production.")
         if self.media_storage == "s3" and not self.media_s3_bucket:
             raise ValueError("MEDIA_S3_BUCKET must be set when MEDIA_STORAGE is s3.")
+        if self.embedder == "gemini" and self.gemini_api_key is None:
+            raise ValueError("GEMINI_API_KEY must be set when EMBEDDER is gemini.")
         return self
 
     @field_validator("database_url", mode="before")
