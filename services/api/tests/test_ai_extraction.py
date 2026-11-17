@@ -2,11 +2,13 @@
 
 from collections.abc import Callable, Sequence
 from datetime import timedelta
+from io import BytesIO
 from typing import Any
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -124,6 +126,31 @@ def test_editor_requests_extraction_and_worker_stores_output(
     assert [p.media_asset_id for p in provider.calls[0]] == [UUID(photo["id"])]
     # Suggestions stay on the run; the listing itself is untouched.
     assert clients["agent"].get(f"{LISTINGS}/{listing['id']}").json() == before
+
+
+def test_provider_gets_photos_without_camera_metadata(
+    db: Session, brokerage: Brokerage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, _, clients = brokerage
+    provider = use(monkeypatch, FakeProvider())
+    exif = Image.Exif()
+    exif[0x010F] = "SecretCam"  # Make
+    exif[0x8825] = {2: (12.0, 34.0, 56.0)}  # GPS latitude
+    out = BytesIO()
+    Image.new("RGB", (2400, 1600), (90, 120, 60)).save(out, "JPEG", exif=exif)
+    listing = new_listing(clients["agent"])
+    upload(clients["agent"], listing["id"], out.getvalue(), "image/jpeg", "gps.jpg")
+    run_jobs(db)
+    clients["agent"].post(extractions(listing["id"]))
+
+    run_jobs(db)
+
+    [photo] = provider.calls[0]
+    assert photo.content_type == "image/jpeg"
+    assert b"SecretCam" not in photo.data
+    with Image.open(BytesIO(photo.data)) as sent:
+        assert not sent.getexif()
+        assert max(sent.size) == 1600
 
 
 def test_runs_are_listed_newest_first(

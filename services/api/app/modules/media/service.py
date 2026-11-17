@@ -245,12 +245,12 @@ def get_content(session: Session, asset_id: UUID) -> tuple[MediaAsset, bytes]:
 _UNREADABLE = "The image could not be read. Upload a different file."
 
 
-def _render_thumbnail(data: bytes) -> bytes:
+def _render_thumbnail(data: bytes, size: tuple[int, int] = THUMBNAIL_SIZE) -> bytes:
     """A small JPEG. Built from pixels only, so camera metadata (GPS, device) is not copied."""
     with Image.open(BytesIO(data)) as image:
         image.load()
         oriented = ImageOps.exif_transpose(image)
-        oriented.thumbnail(THUMBNAIL_SIZE)
+        oriented.thumbnail(size)
         if oriented.mode in ("RGBA", "LA", "P"):
             rgba = oriented.convert("RGBA")
             flat = Image.new("RGB", rgba.size, "white")
@@ -260,6 +260,17 @@ def _render_thumbnail(data: bytes) -> bytes:
         out = BytesIO()
         flat.save(out, "JPEG", quality=82, optimize=True)
         return out.getvalue()
+
+
+def without_metadata(data: bytes, max_side: int = 1600) -> bytes:
+    """A JPEG copy for sending outside the system (AI providers): no EXIF, GPS or device data.
+
+    Raises OSError or ValueError when the image cannot be read.
+    """
+    try:
+        return _render_thumbnail(data, (max_side, max_side))
+    except Image.DecompressionBombError as error:
+        raise ValueError(str(error)) from error
 
 
 def _thumbnail_failed(session: Session, job: Job) -> None:

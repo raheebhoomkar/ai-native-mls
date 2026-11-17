@@ -99,6 +99,9 @@ Set in `.env` at the repository root (never committed). The API refuses to start
 | `MEDIA_MAX_BYTES` | no | `10485760` | Largest upload (10 MB) |
 | `MEDIA_RETENTION_DAYS` | no | `7` | Days before the files of removed media are deleted |
 | `MEDIA_SIGNING_KEY` | in production | per process | Signs media download links (32+ characters). Unset outside production: links stop working when the API restarts |
+| `GEMINI_API_KEY` | no | unset | Google Gemini key for photo extraction. Unset: a demo adapter answers with output labelled `[Demo]`. The free tier may use what you send to improve Google's models, so send demo photos only (ADR 0004) |
+| `GEMINI_MODEL` | no | `gemini-3.5-flash` | Gemini model name |
+| `AI_TIMEOUT_SECONDS` | no | `90` | Time limit for one provider call |
 | `FORWARDED_ALLOW_IPS` | no | `127.0.0.1` | Reverse proxies trusted for the client address (container start script) |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` | no | `mls`, `mls`, `mls`, `5432` | Used only by `docker-compose.yml` |
 

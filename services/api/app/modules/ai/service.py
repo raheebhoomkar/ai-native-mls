@@ -122,9 +122,11 @@ def run_extraction(session: Session, job: Job) -> None:
     for item in run.inputs:
         try:
             asset, data = media.get_content(session, UUID(item["media_asset_id"]))
-        except AppError:
-            continue  # deleted since the request
-        photos.append(Photo(media_asset_id=asset.id, content_type=asset.content_type, data=data))
+            # Originals keep camera metadata (GPS); the provider gets pixels only.
+            clean = media.without_metadata(data)
+        except AppError, OSError, ValueError:
+            continue  # deleted since the request, or unreadable
+        photos.append(Photo(media_asset_id=asset.id, content_type="image/jpeg", data=clean))
     if not photos:
         _fail_run(run, "The photos were removed before the extraction ran.")
         return

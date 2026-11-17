@@ -29,6 +29,8 @@ Listing visibility between organisations is described in `docs/modules/s3-listin
 
 Listing photos add no permission of their own. Whoever may read a listing may see its photos; whoever may edit it (`listing:write` as its agent, or `listing:manage_all`) may upload, remove and retry them, and only while it is not archived. Photo files are fetched through signed links that expire after 15 minutes; see `docs/modules/s6-media-jobs.md`.
 
+AI photo extraction adds no permission of its own either. Whoever may edit a listing may request an extraction (`POST /listings/{id}/ai/extractions`); whoever may read it may list its runs. Runs only suggest values and never change the listing. See `docs/modules/s7-ai-extraction.md`.
+
 ## Role assignment rules
 
 - An MLS organisation may hold: MLS administrator, broker, agent, API consumer.
@@ -48,7 +50,7 @@ Listing photos add no permission of their own. Whoever may read a listing may se
 
 ## Audited actions
 
-`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`, `media.uploaded`, `media.deleted`.
+`auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset_issued`, `auth.password_reset_completed`, `access.denied`, `organisation.created`, `user.created`, `user.profile_updated`, `invitation.created`, `invitation.revoked`, `invitation.accepted`, `member.role_changed`, `member.removed`, `property.created`, `property.updated`, `property.archived`, `listing.created`, `listing.updated`, `listing.status_changed`, `listing.archived`, `media.uploaded`, `media.deleted`, `ai.extraction_requested`.
 
 Audit events record actor, organisation, target, IP address, request ID and time. They never contain passwords, session tokens or link tokens.
 
