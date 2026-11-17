@@ -118,6 +118,9 @@ function stubApi(routes: Record<string, (call: Call) => Response>) {
     "GET /listings/l1/features": () => Response.json([]),
     "GET /listings/l1/redactions": () => Response.json([]),
     "GET /listings/l1/import-source": () => Response.json(null),
+    "GET /notifications": () => Response.json({ items: [], unread: 0 }),
+    "GET /listings/l1/assignment": () => Response.json(null),
+    "GET /listings/l1/comments": () => Response.json([]),
     ...routes,
   };
   vi.stubGlobal(
@@ -475,7 +478,7 @@ test("edit saves listing and property separately, each with its own version", as
   expect(api.sent("PATCH /listings/l1")[1].version).toBe(8);
 });
 
-test("edit conflict keeps typed text until the user chooses to reload", async () => {
+test("edit conflict shows both versions and keeps typed text until the user chooses", async () => {
   let reads = 0;
   stubApi({
     "GET /listings/l1": () =>
@@ -493,12 +496,51 @@ test("edit conflict keeps typed text until the user chooses to reload", async ()
   type("Title", "My title");
   click("Save listing");
 
-  await screen.findByText(/your change was not saved/);
+  const panel = await screen.findByRole("alert", { name: "Edit conflict" });
+  expect(panel.textContent).toContain("now version 8");
+  const row = screen.getByRole("row", { name: /Title/ });
+  expect(row.textContent).toContain("My title");
+  expect(row.textContent).toContain("Their title");
   expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
     "My title",
   );
-  click("Reload and discard my changes");
+  click("Use theirs and discard mine");
   expect(await screen.findByDisplayValue("Their title")).toBeTruthy();
+  expect(screen.queryByRole("alert", { name: "Edit conflict" })).toBeNull();
+});
+
+test("edit conflict: keeping mine saves on top of their version", async () => {
+  let reads = 0;
+  const sent: unknown[] = [];
+  stubApi({
+    "GET /listings/l1": () =>
+      Response.json(
+        ++reads === 1
+          ? LISTING
+          : { ...LISTING, title: "Their title", version: 8 },
+      ),
+    "PATCH /listings/l1": ({ body }) => {
+      sent.push(body);
+      return body.version === 8
+        ? Response.json({ ...LISTING, title: body.title, version: 9 })
+        : error(409, "version_conflict", "Changed by someone else.");
+    },
+  });
+  open("#/listings/l1/edit");
+
+  await screen.findByDisplayValue("Lake-view apartment");
+  type("Title", "My title");
+  click("Save listing");
+  await screen.findByRole("alert", { name: "Edit conflict" });
+  click("Save mine over theirs");
+  expect(await screen.findByText("Listing saved.")).toBeTruthy();
+  expect(sent.map((b) => (b as { version: number }).version)).toEqual([
+    LISTING.version,
+    8,
+  ]);
+  expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
+    "My title",
+  );
 });
 
 test("a listing the caller cannot edit shows no form", async () => {

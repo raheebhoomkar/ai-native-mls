@@ -15,6 +15,8 @@ from app.modules.apikeys import middleware as apikeys_middleware
 from app.modules.apikeys.router import router as apikeys_router
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
+from app.modules.collaboration.router import comments_router, notifications_router
+from app.modules.collaboration.router import listing_router as collaboration_router
 from app.modules.compliance.router import compliance_router, listing_scans_router
 from app.modules.health.router import router as health_router
 from app.modules.imports.router import imports_router, listing_import_router
@@ -76,6 +78,9 @@ def create_app() -> FastAPI:
     v1.include_router(jobs_router)
     v1.include_router(apikeys_router)
     v1.include_router(webhooks_router)
+    v1.include_router(collaboration_router)
+    v1.include_router(comments_router)
+    v1.include_router(notifications_router)
     app.include_router(v1)
 
     if settings.web_dist_dir is not None:

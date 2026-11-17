@@ -17,6 +17,7 @@ import {
 import { ApiKeys } from "./ApiKeys";
 import { ComplianceQueue } from "./ComplianceQueue";
 import { Monitor } from "./Monitor";
+import { Notifications, NotificationsLink } from "./Notifications";
 import { Webhooks } from "./Webhooks";
 import { ListingDetail } from "./ListingDetail";
 import { EditListing, NewListing } from "./ListingForm";
@@ -154,6 +155,9 @@ export function Workspace({
           {canSeeMembers && <NavLink to="/members">Members</NavLink>}
           {canManageKeys && <NavLink to="/api-keys">API keys</NavLink>}
           {canManageKeys && <NavLink to="/webhooks">Webhooks</NavLink>}
+          {organisation && (
+            <NotificationsLink organisationId={organisation.id} />
+          )}
           <NavLink to="/profile">Profile</NavLink>
           {isPlatformAdmin && <NavLink to="/admin">Platform</NavLink>}
         </nav>
@@ -241,7 +245,12 @@ export function Workspace({
             )}
             <Route
               path="/listings/:id"
-              element={<ListingDetail organisation={organisation} />}
+              element={
+                <ListingDetail
+                  organisation={organisation}
+                  myUserId={me.user.id}
+                />
+              }
             />
             <Route
               path="/listings/:id/edit"
@@ -283,6 +292,16 @@ export function Workspace({
               <Webhooks organisation={organisation} />
             ) : current.state === "ready" || current.state === "error" ? (
               <p>Only administrators manage webhooks.</p>
+            ) : (
+              <p>Loading…</p>
+            )
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            organisation ? (
+              <Notifications organisation={organisation} />
             ) : (
               <p>Loading…</p>
             )

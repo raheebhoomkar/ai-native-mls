@@ -15,6 +15,7 @@ import { ListingCompliance } from "./ListingCompliance";
 import { ListingLocation } from "./ListingLocation";
 import { ListingValuation } from "./ListingValuation";
 import { ListingWorkflow } from "./ListingWorkflow";
+import { ListingCollaboration } from "./ListingCollaboration";
 import { ListingRedaction } from "./ListingRedaction";
 import { ListingSuggestions } from "./ListingSuggestions";
 import { formatMoney, type Listing, STATUS_LABELS } from "./Listings";
@@ -61,8 +62,10 @@ type Loaded =
 
 export function ListingDetail({
   organisation,
+  myUserId = "",
 }: {
   organisation: CurrentOrganisation;
+  myUserId?: string;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -397,6 +400,16 @@ export function ListingDetail({
       )}
 
       {isOwn && <ListingValuation listingId={listing.id} />}
+
+      {isOwn && (
+        <ListingCollaboration
+          listingId={listing.id}
+          organisationId={organisation.id}
+          myUserId={myUserId}
+          canEdit={listing.can_edit && !listing.archived_at}
+          canWrite={organisation.my_permissions.includes("listing:write")}
+        />
+      )}
 
       {isOwn && <History listingId={listing.id} version={listing.version} />}
     </section>

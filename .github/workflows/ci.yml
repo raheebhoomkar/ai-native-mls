@@ -97,6 +97,7 @@ jobs:
           -e DATABASE_URL=postgres://mls:mls@localhost:5432/mls
           -e SEED_DEMO_DATA=true
           -e SEED_PASSWORD="$E2E_PASSWORD"
+          -e MEDIA_SIGNING_KEY=ci-throwaway-media-signing-key-0123456789
           ai-native-mls
       - uses: pnpm/action-setup@v4
         with:

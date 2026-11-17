@@ -6,7 +6,7 @@ Commands are for macOS or Linux. Run them from the repository root unless a step
 
 ## What is built
 
-Sprints 0 to 18 of the plan are done (Phases A and B, and S15–S18 of Phase C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
+Sprints 0 to 19 of the plan are done (Phases A, B and C). Per-sprint notes, with design decisions and known limitations, are in `docs/modules/s<N>-*.md`. The newest one says what is being worked on.
 
 | Area | What a tester can do | Sprint note |
 |---|---|---|
@@ -25,6 +25,7 @@ Sprints 0 to 18 of the plan are done (Phases A and B, and S15–S18 of Phase C).
 | Workflow | Run every step on a listing at once (locate, read photos, policy check, human review, search index, valuation); it pauses for review, blocks approval until done; cancel, retry; Monitor page | `s15-workflow-core.md`, `s16-review-gate-monitor.md` |
 | Public API | Create API keys with scopes and a rate limit; call the API from another program with a key; safe retries with `Idempotency-Key` | `s17-public-api.md`, `docs/api/developer-guide.md` |
 | Webhooks | Send signed events (listing changed, property changed, workflow finished) to another system; see each delivery, send again | `s18-webhooks.md` |
+| Team and notifications | Assign a listing to a teammate, comment or keep private notes, see the listing's activity; notifications with preferences; see both versions when someone saved first | `s19-collaboration.md` |
 
 ## 1. Prerequisites
 
@@ -129,11 +130,11 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 cd ../..
 ```
 
-Expected on 2026-11-17: API 241 passed, 3 deselected (the deselected ones are live Gemini tests); web 59 passed. Higher counts later are fine; any failure is not.
+Expected on 2026-11-17 (end of Phase C): API 334 passed, 3 deselected (the deselected ones are live Gemini tests); web 79 passed; Playwright 2 passed. Higher counts later are fine; any failure is not.
 
 Live Gemini tests (need `GEMINI_API_KEY`, use free-tier quota): `cd services/api && .venv/bin/pytest -m live`.
 
-Browser end-to-end test (app running as in step 3, seed loaded, Chrome installed). An agent signs in, creates a listing, finds it, submits it for review and archives it:
+Browser end-to-end tests (app and worker running as in step 3, seed loaded, Chrome installed). One journey: an agent signs in, creates a listing, finds it, submits it for review and archives it. The other: an agent runs the workflow on a new listing, comments, sees the run on the Monitor and archives the listing:
 
 ```bash
 cd apps/web && pnpm e2e
@@ -299,6 +300,16 @@ Estimates use sold listings the caller may see whose sale price the listing agen
 4. As `sunrise.agent@demo.example.com`, edit a listing or run its workflow. The terminal prints `signature ok: listing.changed …` (and `workflow.finished …` when the run ends).
 5. Stop the receiver (Ctrl+C) and edit a listing again. The delivery shows "Trying" with the next attempt time and the error. Start the receiver again: the next attempt is delivered. After 6 failed attempts it shows "Failed" and "Send again".
 6. Click "Turn off": no more deliveries are sent, and "Send test" disappears.
+
+### 6.12d Team, notifications and edit conflicts
+
+1. Sign in as `sunrise.agent@demo.example.com`, open one of your listings. The "Team" section shows "Assigned to: nobody besides the listing agent".
+2. Choose "Assign to" a teammate (for example Sunrise's admin) and click "Assign". Post a comment, then tick "Private note" and save a note.
+3. Sign in as `sunrise.admin@demo.example.com`. The "Notifications" link shows a count; the page lists "… assigned you: …". Open the listing: the team comment shows, the private note does not. Reply with a comment.
+4. Back as the agent, the reply is in Notifications. Untick "Someone comments on a listing I work on" and ask the admin to comment again: no new notification.
+5. "Show activity" on the listing lists edits, status changes, workflow runs and comments, newest first.
+6. Edit conflict: open the same listing's edit page in two browser windows (agent and admin). Change the title in both; save in the first, then in the second. The second shows "Someone else saved this listing…" with a table of the fields that differ. "Use theirs and discard mine" loads their version; "Save mine over theirs" saves yours on top.
+7. Sign in as `harbour.admin@demo.example.com` and open a shared Sunrise listing: there is no Team section.
 
 ### 6.13 API checks
 
