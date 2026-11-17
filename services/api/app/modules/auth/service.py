@@ -94,7 +94,7 @@ def authenticate(session: Session, email: str, password: str) -> User | None:
     user = get_user_by_email(session, email)
     try:
         _hasher.verify(user.password_hash if user else _DUMMY_HASH, password)
-    except (VerificationError, InvalidHashError):
+    except VerificationError, InvalidHashError:
         return None
     if user is None or not user.is_active:
         return None
@@ -155,7 +155,7 @@ def change_password(
     """Change the signed-in user's password and sign out their other sessions."""
     try:
         _hasher.verify(user.password_hash, current_password)
-    except (VerificationError, InvalidHashError):
+    except VerificationError, InvalidHashError:
         raise AppError(
             422,
             "validation_error",

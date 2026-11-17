@@ -47,8 +47,12 @@ Sign in to Render yourself. Do not put Render or GitHub passwords in chat, in th
 | `ENVIRONMENT` | `production` | `Secure` session cookie; API docs page off. |
 | `SEED_DEMO_DATA` | `true` | Create demo organisations, users and listings at start if missing. Set to `false` to stop. |
 | `SEED_PASSWORD` | generated | Password for the demo accounts. Changing it later does not change existing accounts. |
+| `MEDIA_SIGNING_KEY` | generated | Signs short-lived media download links. The app refuses to start in production without it. |
+| `MEDIA_STORAGE` | `local` (not set) | Uploaded files go on the container's disk, which Render's free plan wipes on every deploy or restart. For files that last, create a private S3-compatible bucket (for example Cloudflare R2 or AWS S3) and add `MEDIA_STORAGE=s3`, `MEDIA_S3_BUCKET`, `MEDIA_S3_ENDPOINT_URL` (not needed for AWS), `MEDIA_S3_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in the dashboard. Never put these in `render.yaml`. |
 | `FORWARDED_ALLOW_IPS` | `*` | Trust Render's proxy for the client address. |
 | `PORT` | set by Render | The port the server listens on. |
+
+The container also runs the background job worker (`python -m app.worker`, started by `start.sh`); it makes thumbnails and deletes removed files. A free service that sleeps runs no jobs while asleep; they run when it wakes.
 
 ## Later deployments
 

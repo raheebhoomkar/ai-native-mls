@@ -20,7 +20,8 @@ COPY services/api/app ./app
 RUN pip install --no-cache-dir .
 COPY services/api ./
 COPY --from=web /src/apps/web/dist /srv/web
-RUN useradd --system --no-create-home app
+RUN useradd --system --no-create-home app \
+    && mkdir -p /srv/var/media && chown app /srv/var/media
 USER app
 EXPOSE 8000
 CMD ["./start.sh"]

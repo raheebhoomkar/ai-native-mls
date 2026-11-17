@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"photos\":[{\"media_asset_id\":\"11111111-1111-4111-8111-111111111111\",\"features\":[{\"attribute\":\"window\",\"value\":\"window\",\"confidence\":0.95,\"evidence\":\"white framed window on the wall\"},{\"attribute\":\"flooring\",\"value\":\"wood flooring\",\"confidence\":0.9,\"evidence\":\"brown vertical plank pattern on the floor\"},{\"attribute\":\"furnishing\",\"value\":\"couch\",\"confidence\":0.7,\"evidence\":\"dark rectangle resembling furniture on the floor\",\"uncertain\":true}]}]}",
+            "thoughtSignature": "EpIBCo8BAWkUfRP4kqelYzrgQQR8+gWk2Z+7WoUnHuUGHkGLAMbB2sCpcck5/dqIOx84cn90+mB8SQqciWavhbhC73mN5Rp7SxZc5T8YoJ9eK6lXfyj2onUMq79N/UA3jB5YcDNu4C674WrYC/gZVD80pq6IuR0kY+W2ctNvcrnyRIesZtaEaIw6BdWXtUXcAc6YZ74="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1282,
+    "candidatesTokenCount": 128,
+    "totalTokenCount": 1410,
+    "promptTokensDetails": [
+      {
+        "modality": "IMAGE",
+        "tokenCount": 1064
+      },
+      {
+        "modality": "TEXT",
+        "tokenCount": 218
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.6-flash",
+  "responseId": "-237asnzO-Tm3LUPnYLbiAc"
+}

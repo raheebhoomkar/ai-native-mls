@@ -14,8 +14,10 @@ import {
   ROLE_LABELS,
   setActiveOrganisation,
 } from "./api";
+import { ComplianceQueue } from "./ComplianceQueue";
 import { ListingDetail } from "./ListingDetail";
 import { EditListing, NewListing } from "./ListingForm";
+import { ListingImport } from "./ListingImport";
 import { Listings } from "./Listings";
 import { Members } from "./Members";
 import { SystemStatus } from "./SystemStatus";
@@ -133,6 +135,7 @@ export function Workspace({
   const organisation = current.state === "ready" ? current.organisation : null;
   const canSeeMembers = organisation?.my_permissions.includes("member:read");
   const canSeeListings = organisation?.my_permissions.includes("listing:read");
+  const canReview = organisation?.my_permissions.includes("listing:publish");
 
   return (
     <>
@@ -142,6 +145,7 @@ export function Workspace({
             Home
           </NavLink>
           {canSeeListings && <NavLink to="/listings">Listings</NavLink>}
+          {canReview && <NavLink to="/compliance">Review queue</NavLink>}
           {canSeeMembers && <NavLink to="/members">Members</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
           {isPlatformAdmin && <NavLink to="/admin">Platform</NavLink>}
@@ -220,10 +224,13 @@ export function Workspace({
         {organisation && canSeeListings && (
           <>
             {organisation.my_permissions.includes("listing:write") && (
-              <Route
-                path="/listings/new"
-                element={<NewListing organisation={organisation} />}
-              />
+              <>
+                <Route
+                  path="/listings/new"
+                  element={<NewListing organisation={organisation} />}
+                />
+                <Route path="/listings/import" element={<ListingImport />} />
+              </>
             )}
             <Route
               path="/listings/:id"
@@ -238,6 +245,18 @@ export function Workspace({
         {current.state === "loading" && (
           <Route path="/listings/*" element={<p>Loading…</p>} />
         )}
+        <Route
+          path="/compliance"
+          element={
+            organisation && canReview ? (
+              <ComplianceQueue organisation={organisation} />
+            ) : current.state === "ready" || current.state === "error" ? (
+              <p>You cannot review listings in this organisation.</p>
+            ) : (
+              <p>Loading…</p>
+            )
+          }
+        />
         <Route
           path="/members"
           element={

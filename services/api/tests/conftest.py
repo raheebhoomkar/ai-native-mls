@@ -12,6 +12,8 @@ _BASE_URL = make_url(
 _TEST_URL = _BASE_URL.set(database=f"{_BASE_URL.database}_test")
 os.environ["DATABASE_URL"] = _TEST_URL.render_as_string(hide_password=False)
 os.environ.setdefault("ENVIRONMENT", "test")
+# Blank beats the key in .env, so tests never call Gemini; only `pytest -m live` does.
+os.environ["GEMINI_API_KEY"] = ""
 
 from collections.abc import Callable, Iterator  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -27,6 +29,8 @@ from app.core.db import get_engine, get_session  # noqa: E402
 from app.main import create_app  # noqa: E402
 from app.modules.auth import service as auth  # noqa: E402
 from app.modules.auth.models import User  # noqa: E402
+from app.modules.media import service as media_service  # noqa: E402
+from app.modules.media.storage import LocalStorage  # noqa: E402
 from app.modules.organisations import service as organisations  # noqa: E402
 from app.modules.organisations.models import Organisation  # noqa: E402
 
@@ -46,6 +50,14 @@ def _migrated_database() -> None:
             connection.execute(text(f'CREATE DATABASE "{_TEST_URL.database}"'))
     admin.dispose()
     command.upgrade(Config(str(Path(__file__).resolve().parents[1] / "alembic.ini")), "head")
+
+
+@pytest.fixture(autouse=True)
+def storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> LocalStorage:
+    """Media files go to a per-test directory, never the developer's media folder."""
+    local = LocalStorage(tmp_path / "media")
+    monkeypatch.setattr(media_service, "get_storage", lambda: local)
+    return local
 
 
 @pytest.fixture

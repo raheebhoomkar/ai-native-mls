@@ -1,8 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field, PostgresDsn, SecretStr, field_validator
+from pydantic import Field, PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -22,6 +22,38 @@ class Settings(BaseSettings):
     # Demo data at start-up. In production both must be set; see app/seed.py.
     seed_demo_data: bool = False
     seed_password: SecretStr | None = Field(default=None, min_length=12)
+    # Uploaded media; see app/modules/media/storage.py. "local" keeps files under media_root
+    # (one server only). "s3" uses any S3-compatible bucket; credentials come from the usual
+    # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY variables, never from this file.
+    media_storage: Literal["local", "s3"] = "local"
+    media_root: Path = REPO_ROOT / "var" / "media"
+    media_s3_bucket: str | None = None
+    # For S3-compatible services other than AWS (Cloudflare R2, MinIO, ...).
+    media_s3_endpoint_url: str | None = None
+    media_s3_region: str | None = None
+    # Removed media is kept this long before its files are deleted from storage.
+    media_retention_days: int = Field(default=7, ge=0, le=3650)
+    media_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+    # Signs short-lived media download URLs. Required in production.
+    media_signing_key: SecretStr | None = Field(default=None, min_length=32)
+    # AI vision provider; see app/modules/ai/providers.py. No key: the labelled demo adapter.
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-3.5-flash"
+    # Gemini takes 15-40 s per call; overloaded models answer 503 only after about 80 s.
+    ai_timeout_seconds: float = Field(default=90, ge=5, le=600)
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def _blank_is_none(cls, value: object) -> object:
+        return value or None
+
+    @model_validator(mode="after")
+    def _check_media(self) -> Self:
+        if self.environment == "production" and self.media_signing_key is None:
+            raise ValueError("MEDIA_SIGNING_KEY must be set in production.")
+        if self.media_storage == "s3" and not self.media_s3_bucket:
+            raise ValueError("MEDIA_S3_BUCKET must be set when MEDIA_STORAGE is s3.")
+        return self
 
     @field_validator("database_url", mode="before")
     @classmethod

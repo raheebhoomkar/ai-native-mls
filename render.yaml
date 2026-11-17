@@ -31,6 +31,9 @@ services:
         value: "true"
       - key: SEED_PASSWORD
         generateValue: true
+      # Signs short-lived media download links.
+      - key: MEDIA_SIGNING_KEY
+        generateValue: true
       # Requests reach the container only through Render's proxy.
       - key: FORWARDED_ALLOW_IPS
         value: "*"

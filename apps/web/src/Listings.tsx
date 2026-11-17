@@ -79,7 +79,8 @@ export function Listings({
       <h2 id="listings-heading">Listings</h2>
       {organisation.my_permissions.includes("listing:write") && (
         <p>
-          <Link to="/listings/new">New listing</Link>
+          <Link to="/listings/new">New listing</Link> ·{" "}
+          <Link to="/listings/import">Import listings</Link>
         </p>
       )}
 

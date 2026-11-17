@@ -235,3 +235,208 @@ form.wide > label select {
     margin-bottom: 0.5rem;
   }
 }
+
+/* Listing photos: as many tiles as fit. */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+}
+
+.gallery img,
+.gallery .placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.gallery .placeholder {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  border: 1px dashed currentColor;
+  font-size: 0.9rem;
+}
+
+.gallery .actions {
+  margin: 0.25rem 0;
+}
+
+.caption {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.uploads {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 30rem;
+}
+
+.uploads progress {
+  width: 100%;
+}
+
+.file-picker {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.75rem 0;
+  max-width: 30rem;
+}
+
+/* Listing details with AI suggestions beside them; stacked below 48rem. */
+.detail-columns {
+  display: grid;
+  gap: 0 2rem;
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .detail-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.suggestions h3:first-child {
+  margin-top: 0.75rem;
+}
+
+.suggestion-photos,
+.suggestion-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.suggestion-photos img {
+  display: block;
+  width: 8rem;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.suggestion-list li {
+  overflow-wrap: anywhere;
+}
+
+.suggestion-list .actions {
+  margin: 0.25rem 0;
+}
+
+.suggestion-list form {
+  margin: 0.25rem 0;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.decision {
+  margin: 0.25rem 0;
+  font-weight: 600;
+}
+
+/* Redaction: the original with outlined areas beside the blurred copy; stacked on phones. */
+.redaction-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.redaction-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.redaction-preview figure {
+  margin: 0;
+}
+
+.redaction-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.redaction-preview .boxed {
+  position: relative;
+}
+
+.redaction-preview .box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #d00;
+}
+
+.redaction-preview .box.uncertain {
+  border-style: dashed;
+  border-color: #c60;
+}
+
+.region-list {
+  padding-left: 1.25rem;
+}
+
+/* Policy check findings. */
+.finding-list {
+  display: grid;
+  gap: 1rem;
+  padding-left: 1.25rem;
+}
+
+.evidence {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.evidence mark {
+  font-weight: 600;
+}
+
+.trail {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.severity-high {
+  color: #b00020;
+}
+
+.note-field {
+  display: grid;
+  gap: 0.3rem;
+  max-width: 30rem;
+}
+
+/* Long cells that would make a table too wide on one line. */
+td.wrap,
+td.import-problems {
+  white-space: normal;
+  vertical-align: top;
+  min-width: 14rem;
+}
+
+td.import-problems ul {
+  margin: 0;
+  padding-left: 1rem;
+}

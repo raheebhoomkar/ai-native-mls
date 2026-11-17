@@ -47,13 +47,52 @@ export async function api<T>(
   }
   // Errors use the API envelope; a proxy failure may not be JSON.
   const body = await response.json().catch(() => null);
-  throw new ApiError(
-    response.status,
+  throw toApiError(response.status, body, response.headers.get("X-Request-ID"));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toApiError(status: number, body: any, requestId: string | null) {
+  return new ApiError(
+    status,
     body?.error?.code ?? "error",
-    body?.error?.message ?? `The API responded with status ${response.status}.`,
-    response.headers.get("X-Request-ID"),
+    body?.error?.message ?? `The API responded with status ${status}.`,
+    requestId,
     body?.error?.details ?? [],
   );
+}
+
+/** POST a file as the raw request body, reporting progress (0 to 1). fetch cannot report upload progress. */
+export function uploadFile<T>(
+  path: string,
+  file: File,
+  onProgress: (fraction: number) => void,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/v1${path}`);
+    xhr.setRequestHeader("Content-Type", file.type);
+    if (activeOrganisationId)
+      xhr.setRequestHeader("X-Organisation-ID", activeOrganisationId);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded / event.total);
+    };
+    xhr.onerror = () =>
+      reject(new ApiError(0, "unreachable", "The API is not reachable.", null));
+    xhr.onload = () => {
+      let body = null;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        // not JSON: a proxy error page
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as T);
+      else
+        reject(
+          toApiError(xhr.status, body, xhr.getResponseHeader("X-Request-ID")),
+        );
+    };
+    xhr.send(file);
+  });
 }
 
 export function describeError(error: unknown): string {

@@ -138,3 +138,29 @@ class ListingStatusHistory(Base):
     changed_by_user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     reason: Mapped[str | None] = mapped_column(Text)
     changed_at: Mapped[datetime] = _timestamp()
+
+
+FEATURE_SOURCES: tuple[str, ...] = ("ai_reviewed",)
+
+
+class ListingFeature(Base):
+    """A confirmed observable feature (flooring, appliance...). Separate from the columns an
+    agent enters, so an AI suggestion can never overwrite them. Added only by a person.
+    """
+
+    __tablename__ = "listing_features"
+    __table_args__ = (
+        CheckConstraint(one_of("source", FEATURE_SOURCES), name="ck_listing_features_source"),
+        Index("ix_listing_features_listing", "listing_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    organisation_id: Mapped[UUID] = mapped_column(ForeignKey("organisations.id"))
+    listing_id: Mapped[UUID] = mapped_column(ForeignKey("listings.id"))
+    attribute: Mapped[str] = mapped_column(String(30))
+    value: Mapped[str] = mapped_column(String(120))
+    source: Mapped[str] = mapped_column(String(20))
+    # The photo that shows it, when it came from an AI suggestion.
+    media_asset_id: Mapped[UUID | None] = mapped_column(ForeignKey("media_assets.id"))
+    created_by_user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _timestamp()

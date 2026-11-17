@@ -113,6 +113,11 @@ function stubApi(routes: Record<string, (call: Call) => Response>) {
   const all: typeof routes = {
     "GET /auth/me": () => Response.json(ME),
     "GET /organisations/current": () => Response.json(ORG),
+    "GET /listings/l1/media": () => Response.json([]),
+    "GET /listings/l1/ai/extractions": () => Response.json([]),
+    "GET /listings/l1/features": () => Response.json([]),
+    "GET /listings/l1/redactions": () => Response.json([]),
+    "GET /listings/l1/import-source": () => Response.json(null),
     ...routes,
   };
   vi.stubGlobal(

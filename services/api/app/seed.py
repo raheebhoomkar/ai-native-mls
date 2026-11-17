@@ -12,15 +12,20 @@ Safe to run again: existing users and organisations are left as they are.
 """
 
 import sys
+from io import BytesIO
+from uuid import UUID
 
+from PIL import Image, ImageDraw, ImageFont
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import app.main  # noqa: F401  # importing the app registers every module's models on Base
 from app.core.config import get_settings
 from app.core.db import get_engine
+from app.core.errors import AppError
 from app.modules.auth import service as auth
 from app.modules.auth.models import User
+from app.modules.compliance import service as compliance
 from app.modules.listings import service as listings
 from app.modules.listings.models import Listing
 from app.modules.listings.schemas import (
@@ -31,6 +36,7 @@ from app.modules.listings.schemas import (
     PropertyCreate,
     TransitionRequest,
 )
+from app.modules.media import service as media
 from app.modules.organisations import service as organisations
 from app.modules.organisations.deps import TenantContext
 from app.modules.organisations.models import Organisation
@@ -94,6 +100,70 @@ def _context(session: Session, user: User, organisation: Organisation) -> Tenant
     return TenantContext(user, organisation.id, membership.role if membership else None)
 
 
+def _demo_listing(
+    session: Session,
+    agent: TenantContext,
+    approver: TenantContext,
+    number: int,
+    row: DemoRow,
+    remarks: str = "Fictional demo listing for local development.",
+) -> Listing:
+    title, kind, price, visibility, status, ptype, locality, city, beds, baths, sqft = row
+    prop = listings.create_property(
+        session,
+        agent,
+        PropertyCreate.model_validate(
+            {
+                "property_type": ptype,
+                "address": Address(
+                    line1=f"Unit {number}, Example Towers",
+                    locality=locality,
+                    city=city,
+                    country="IN",
+                ),
+                "bedrooms": beds,
+                "bathrooms": baths,
+                "area": Area.model_validate({"value": sqft, "unit": "sqft"}),
+            }
+        ),
+    )
+    listing = listings.create_listing(
+        session,
+        agent,
+        ListingCreate.model_validate(
+            {
+                "property_id": prop.id,
+                "listing_type": kind,
+                "title": title,
+                "remarks": remarks,
+                "list_price": {"amount": price, "currency": "INR"},
+                "visibility": visibility,
+            }
+        ),
+    )
+    # Walk the real lifecycle, so history and audit rows look like genuine use.
+    steps = {
+        "draft": [],
+        "pending_review": [(agent, "pending_review")],
+        "active": [(agent, "pending_review"), (approver, "active")],
+        "sold": [(agent, "pending_review"), (approver, "active"), (agent, "sold")],
+    }[status]
+    for ctx, to in steps:
+        sold_price = Money.model_validate({"amount": price, "currency": "INR"})
+        listings.transition_listing(
+            session,
+            ctx,
+            listing.id,
+            TransitionRequest(
+                to=to,
+                version=listing.version,
+                sold_price=sold_price if to == "sold" else None,
+            ),
+        )
+        session.refresh(listing)
+    return listing
+
+
 def _seed_listings(session: Session, orgs: dict[str, Organisation]) -> list[str]:
     created: list[str] = []
     for org_name, (agent_email, approver_email, rows) in DEMO_LISTINGS.items():
@@ -107,60 +177,103 @@ def _seed_listings(session: Session, orgs: dict[str, Organisation]) -> list[str]
         agent = _context(session, agent_user, org)
         approver = _context(session, approver_user, org)
         for number, row in enumerate(rows, start=1):
-            title, kind, price, visibility, status, ptype, locality, city, beds, baths, sqft = row
-            prop = listings.create_property(
-                session,
-                agent,
-                PropertyCreate.model_validate(
-                    {
-                        "property_type": ptype,
-                        "address": Address(
-                            line1=f"Unit {number}, Example Towers",
-                            locality=locality,
-                            city=city,
-                            country="IN",
-                        ),
-                        "bedrooms": beds,
-                        "bathrooms": baths,
-                        "area": Area.model_validate({"value": sqft, "unit": "sqft"}),
-                    }
-                ),
+            _demo_listing(session, agent, approver, number, row)
+            created.append(f"listing {row[0]}")
+    return created
+
+
+# Remarks a policy check flags, so the review queue has something to show. Fictional.
+COMPLIANCE_DEMO: DemoRow = (
+    "[Demo] 2 BHK to let near the IT park", "rent", "38000", "private", "pending_review",
+    "apartment", "Hinjewadi", "Pune", 2, 2, "850",
+)  # fmt: skip
+COMPLIANCE_REMARKS = (
+    "Fictional demo listing. Bright 2 BHK, 10 minutes from the IT park. "
+    "Vegetarians only, no bachelors."
+)
+
+
+def _seed_compliance_demo(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    """One Sunrise listing submitted with remarks the policy flags; its check is queued for
+    the worker. Added on its own so existing local databases get it too."""
+    if session.scalar(select(Listing.id).where(Listing.title == COMPLIANCE_DEMO[0])):
+        return []
+    agent_user = auth.get_user_by_email(session, "sunrise.agent@demo.example.com")
+    approver_user = auth.get_user_by_email(session, "sunrise.admin@demo.example.com")
+    if agent_user is None or approver_user is None:
+        return []
+    org = orgs["Sunrise Realty"]
+    agent = _context(session, agent_user, org)
+    listing = _demo_listing(
+        session, agent, _context(session, approver_user, org), 9, COMPLIANCE_DEMO,
+        COMPLIANCE_REMARKS,
+    )  # fmt: skip
+    compliance.scan_on_submit(session, agent, listing.id)
+    return [f"listing {listing.title} (policy check queued)"]
+
+
+# Muted wall, roof and sky colours; one set per demo photo.
+_PHOTO_COLOURS = (
+    ((214, 196, 160), (140, 70, 50), (150, 190, 220)),
+    ((190, 200, 205), (70, 80, 95), (230, 200, 160)),
+)
+
+
+def _demo_photo(number: int) -> bytes:
+    """A drawn house, clearly labelled as a demo; no real photograph is shipped."""
+    wall, roof, sky = _PHOTO_COLOURS[(number - 1) % len(_PHOTO_COLOURS)]
+    image = Image.new("RGB", (1200, 800), sky)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 680, 1200, 800), fill=(110, 150, 90))
+    draw.rectangle((330, 360, 870, 690), fill=wall)
+    draw.polygon([(280, 380), (600, 150), (920, 380)], fill=roof)
+    draw.rectangle((550, 520, 650, 690), fill=roof)
+    draw.text((40, 30), f"[Demo] photo {number}", fill="white", font=ImageFont.load_default(56))
+    out = BytesIO()
+    image.save(out, "JPEG", quality=85)
+    return out.getvalue()
+
+
+def _stored(session: Session, asset_id: UUID) -> bool:
+    try:
+        media.get_content(session, asset_id)
+    except AppError:
+        return False
+    return True
+
+
+def _seed_photos(session: Session, orgs: dict[str, Organisation]) -> list[str]:
+    """Two photos per demo listing. Also replaces photos whose files are gone, as on a fresh
+    container with local storage. The background worker makes their thumbnails."""
+    created: list[str] = []
+    for org_name, (agent_email, _, _) in DEMO_LISTINGS.items():
+        agent_user = auth.get_user_by_email(session, agent_email)
+        if agent_user is None:
+            continue
+        agent = _context(session, agent_user, orgs[org_name])
+        demo = session.scalars(
+            select(Listing).where(
+                Listing.organisation_id == orgs[org_name].id,
+                Listing.title.startswith("[Demo]"),
+                Listing.archived_at.is_(None),
             )
-            listing = listings.create_listing(
-                session,
-                agent,
-                ListingCreate.model_validate(
-                    {
-                        "property_id": prop.id,
-                        "listing_type": kind,
-                        "title": title,
-                        "remarks": "Fictional demo listing for local development.",
-                        "list_price": {"amount": price, "currency": "INR"},
-                        "visibility": visibility,
-                    }
-                ),
-            )
-            # Walk the real lifecycle, so history and audit rows look like genuine use.
-            steps = {
-                "draft": [],
-                "pending_review": [(agent, "pending_review")],
-                "active": [(agent, "pending_review"), (approver, "active")],
-                "sold": [(agent, "pending_review"), (approver, "active"), (agent, "sold")],
-            }[status]
-            for ctx, to in steps:
-                sold_price = Money.model_validate({"amount": price, "currency": "INR"})
-                listings.transition_listing(
+        ).all()
+        for listing in demo:
+            _, photos = media.list_media(session, agent, listing.id)
+            if photos and all(_stored(session, photo.id) for photo in photos):
+                continue
+            for photo in photos:
+                media.delete(session, agent, photo.id)
+            for number in (1, 2):
+                media.upload(
                     session,
-                    ctx,
+                    agent,
                     listing.id,
-                    TransitionRequest(
-                        to=to,
-                        version=listing.version,
-                        sold_price=sold_price if to == "sold" else None,
-                    ),
+                    filename=f"demo-photo-{number}.jpg",
+                    declared_type="image/jpeg",
+                    data=_demo_photo(number),
                 )
-                session.refresh(listing)
-            created.append(f"listing {title}")
+            created.append(f"photos for {listing.title}")
     return created
 
 
@@ -188,7 +301,9 @@ def seed(session: Session, password: str = SEED_PASSWORD) -> list[str]:
                 organisations.add_member(
                     session, user_id=user.id, organisation_id=orgs[org_name].id, role=role
                 )
-    return created + _seed_listings(session, orgs)
+    created += _seed_listings(session, orgs)
+    created += _seed_compliance_demo(session, orgs)
+    return created + _seed_photos(session, orgs)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -11,6 +11,7 @@ from app.core.pagination import Page, PageParamsDep
 from app.modules.audit import service as audit
 from app.modules.auth import service as auth
 from app.modules.auth.deps import client_ip
+from app.modules.compliance import service as compliance
 from app.modules.listings import service
 from app.modules.listings.models import Listing, Property
 from app.modules.listings.schemas import (
@@ -18,6 +19,7 @@ from app.modules.listings.schemas import (
     AgentOut,
     Area,
     ListingCreate,
+    ListingFeatureOut,
     ListingFilters,
     ListingOut,
     ListingUpdate,
@@ -250,6 +252,10 @@ def transition_listing(
     listing_id: UUID, body: TransitionRequest, request: Request, session: SessionDep, ctx: CanWrite
 ) -> ListingOut:
     """Change a listing's status. `allowed_transitions` on the listing says what you may request."""
+    if body.to == "active" and service.get_listing(session, ctx, listing_id).status == (
+        "pending_review"
+    ):
+        compliance.ensure_approvable(session, listing_id)
     listing, previous = service.transition_listing(session, ctx, listing_id, body)
     _audit(
         request,
@@ -260,6 +266,11 @@ def transition_listing(
         listing.id,
         {"from": previous, "to": listing.status},
     )
+    # Submitting for review starts a policy check for the reviewer.
+    if listing.status == "pending_review" and (
+        run := compliance.scan_on_submit(session, ctx, listing.id)
+    ):
+        compliance.record_requested(session, ctx, run, client_ip(request))
     session.refresh(listing)
     return _listings_out(session, ctx, [listing])[0]
 
@@ -280,3 +291,10 @@ def list_history(
     return Page(
         items=[StatusChangeOut.model_validate(item) for item in items], next_cursor=next_cursor
     )
+
+
+@listings_router.get("/{listing_id}/features", responses=_ERRORS)
+def list_features(listing_id: UUID, session: SessionDep, ctx: CanRead) -> list[ListingFeatureOut]:
+    """Features a person confirmed, for example from reviewed AI suggestions."""
+    listing = service.get_listing(session, ctx, listing_id)
+    return [ListingFeatureOut.model_validate(f) for f in service.list_features(session, listing)]

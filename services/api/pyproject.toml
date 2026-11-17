@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "mls-api"
 version = "0.1.0"
 description = "AI-Native MLS API (modular monolith)"
-requires-python = ">=3.13"
+requires-python = ">=3.15"
 dependencies = [
     "fastapi>=0.163,<1",
     "uvicorn[standard]>=0.54,<1",
@@ -16,6 +16,10 @@ dependencies = [
     "pydantic-settings>=2.16,<3",
     "argon2-cffi>=25.1,<26",
     "email-validator>=2.4,<3",
+    "pillow>=13,<14",
+    "boto3>=1.44,<2",
+    # Below 5: OpenCV 5 dropped the Haar cascades used for face detection.
+    "opencv-python-headless>=4.14,<5",
 ]
 
 [project.optional-dependencies]
@@ -53,3 +57,6 @@ files = ["app", "tests", "migrations"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Live tests call real providers and cost quota; run them with `pytest -m live`.
+addopts = "-m 'not live'"
+markers = ["live: calls a real external provider (needs credentials in .env)"]

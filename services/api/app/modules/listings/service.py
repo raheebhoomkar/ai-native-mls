@@ -9,7 +9,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.errors import AppError, ErrorDetail
 from app.core.pagination import PageParams, paginate
-from app.modules.listings.models import Listing, ListingStatusHistory, Property
+from app.modules.listings.models import Listing, ListingFeature, ListingStatusHistory, Property
 from app.modules.listings.schemas import (
     ListingCreate,
     ListingFilters,
@@ -423,3 +423,44 @@ def list_history(
         sort=ListingStatusHistory.changed_at,
         id_column=ListingStatusHistory.id,
     )
+
+
+# --- Confirmed features --------------------------------------------------------------------
+
+
+def list_features(session: Session, listing: Listing) -> Sequence[ListingFeature]:
+    """Callers pass a listing they already loaded with `get_listing`, so visibility holds."""
+    return session.scalars(
+        select(ListingFeature)
+        .where(ListingFeature.listing_id == listing.id)
+        .order_by(ListingFeature.attribute, ListingFeature.created_at, ListingFeature.id)
+    ).all()
+
+
+def add_feature(
+    session: Session,
+    ctx: TenantContext,
+    listing: Listing,
+    *,
+    attribute: str,
+    value: str,
+    media_asset_id: UUID | None,
+) -> ListingFeature:
+    """Add a person-confirmed feature. The same attribute and value (any case) is kept once."""
+    if not can_edit(ctx, listing):
+        raise AppError(403, "forbidden", "You do not have permission to do this.")
+    for existing in list_features(session, listing):
+        if existing.attribute == attribute and existing.value.casefold() == value.casefold():
+            return existing
+    feature = ListingFeature(
+        organisation_id=listing.organisation_id,
+        listing_id=listing.id,
+        attribute=attribute,
+        value=value,
+        source="ai_reviewed",
+        media_asset_id=media_asset_id,
+        created_by_user_id=ctx.user.id,
+    )
+    session.add(feature)
+    session.flush()
+    return feature
